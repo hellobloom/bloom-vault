@@ -3,7 +3,7 @@
   "tasks": [
    {
      "label": "tsc-watch",
-     "command": "node_modules/.bin/tsc --watch --project ./app",
+     "command": "node_modules/.bin/tsc --watch",
      "type": "shell",
      "isBackground": true,
      "group": "build",
