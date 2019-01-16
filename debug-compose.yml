@@ -12,4 +12,4 @@ services:
     ports:
       - 3001:3001
       - 9298:9298
-    command: ./bin/debug.sh
+    command: bin/debug.sh

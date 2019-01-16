@@ -11,7 +11,7 @@ services:
       - datavolume:/var/lib/postgresql/data
 
   vault:
-    build: ./app
+    build: .
     restart: "no"
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD}

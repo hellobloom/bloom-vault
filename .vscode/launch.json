@@ -10,10 +10,10 @@
       "request": "attach",
       "name": "Attach to Docker",
       "port": 9298,
-      "localRoot": "${workspaceFolder}/app",
+      "localRoot": "${workspaceFolder}",
       "remoteRoot": "/app",
       "outFiles": [
-        "${workspaceFolder}/app/build/**/*.js"
+        "${workspaceFolder}/build/**/*.js"
       ],
       "preLaunchTask": "tsc-watch",
       "skipFiles": [
