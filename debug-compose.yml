@@ -1,0 +1,15 @@
+version: '3.1'
+
+services:
+
+  db:
+    restart: "no"
+    ports:
+      - "5433:5432"
+
+  vault:
+    restart: "no"
+    ports:
+      - 3001:3001
+      - 9298:9298
+    command: ./bin/debug.sh

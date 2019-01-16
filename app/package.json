@@ -1,0 +1,28 @@
+{
+  "name": "bloom-vault",
+  "version": "0.0.1",
+  "description": "e2e encrypted provider agnositc data storage",
+  "main": "build/index.js",
+  "scripts": {
+    "migrate": "sequelize db:migrate",
+    "build": "tsc",
+    "start": "node build/index.js",
+    "debug": "node --inspect=0.0.0.0:9298 build/index.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.3",
+    "node-fetch": "^2.3.0",
+    "pg": "^7.8.0",
+    "sequelize": "^4.37.10",
+    "sequelize-cli": "^5.4.0"
+  },
+  "devDependencies": {
+    "@types/body-parser": "^1.17.0",
+    "@types/node-fetch": "^2.1.4",
+    "@types/express": "^4.16.0",
+    "@types/node": "^10.3.4",
+    "typescript": "^2.9.2"
+  }
+}
