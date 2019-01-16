@@ -15,6 +15,7 @@
       "outFiles": [
         "${workspaceFolder}/app/build/**/*.js"
       ],
+      "preLaunchTask": "tsc-watch",
       "skipFiles": [
         "<node_internals>/**/*.js",
       ]

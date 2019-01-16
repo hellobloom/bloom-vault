@@ -1,4 +1,18 @@
-import {RequestHandler} from 'express-serve-static-core'
+import {RequestHandler, NextFunction, Request, Response} from 'express-serve-static-core'
+
+export class ClientFacingError extends Error {}
+
+export function asyncHandler(
+  handler:(req: Request, res: Response , next: NextFunction
+) => Promise<void>) {
+  return async(req: Request, res: Response, next: NextFunction) => {
+    try {
+      await handler(req, res, next)
+    } catch (err) {
+      return next(err)
+    }
+  }
+}
 
 export const apiOnly: RequestHandler = (req, res, next) => {
   if (req.header('Content-Type') === 'application/json') {

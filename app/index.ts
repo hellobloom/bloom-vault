@@ -6,7 +6,8 @@ import {env} from './src/environment'
 
 import { persistError } from './src/logger'
 
-import { tokenRouter } from './src/routes/token'
+import { tokenRouter as authRouter } from './src/routes/auth'
+import { ClientFacingError } from './src/requestUtils';
 
 const app = express()
 const server = http.createServer(app)
@@ -25,14 +26,14 @@ app.use((req, res, next) => {
   return next()
 })
 
-tokenRouter(app)
+authRouter(app)
 
 app.get('*', (req, res, next) => res.status(404).end())
 app.post('*', (req, res, next) => res.status(404).end())
 
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.log(err)
-  res.status(500).json({error: 'Something went wrong'})
+  const message = err instanceof ClientFacingError ? err.message : 'Something went wrong'
+  res.status(500).json({error: message})
   persistError(err.message, err.stack!)
 })
 
