@@ -33,7 +33,8 @@ app.post('*', (req, res, next) => res.status(404).end())
 
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   const message = err instanceof ClientFacingError ? err.message : 'Something went wrong'
-  res.status(500).json({error: message})
+  const status = err instanceof ClientFacingError ? err.status : 500
+  res.status(status).json({error: message})
   persistError(err.message, err.stack!)
 })
 

@@ -31,7 +31,7 @@ export default class Repo {
 
   static async getEntity(token: string): Promise<{key: Buffer, fingerprint: Buffer} | null> {
     const result = await pool.query(`
-      select key, fingerprint
+      select key, e.fingerprint
       from entities e
       join access_token a on e.fingerprint = a.fingerprint
       where a.uuid = $1;
@@ -44,8 +44,8 @@ export default class Repo {
   static async createAccessToken(fingerprint: Buffer): Promise<string> {
     await pool.query(`
       insert into entities 
-      (fingerprint) select ($1) 
-      where not exists (select 1 from entities where fingerprint = $1);
+      (fingerprint) select ($1::pgp_fingerprint) 
+      where not exists (select 1 from entities where fingerprint = $1::pgp_fingerprint);
     `, [fingerprint])
     
     const token = await pool.query(`
@@ -60,7 +60,7 @@ export default class Repo {
       const result = await client.query(`
         update access_token set validated_at = now()
         where 1=1
-          and uuid = $2
+          and uuid = $1
           and validated_at is null
         returning fingerprint, date_part('epoch',now() + interval '${this.tokenExpiration}')::int as expires_at;
         `, [token]
@@ -70,10 +70,11 @@ export default class Repo {
       if(!row) return null
 
       if(key) {
-        await client.query(
-          `update entities set key = $1 where fingerprint = $2 and key is null`,
+        const update = await client.query(
+          `update entities set key = $1 where fingerprint::pgp_fingerprint = $2 and key is null`,
           [key, row.fingerprint]
         )
+        if(update.rowCount !== 1) return null
       }
 
       return row.expires_at
