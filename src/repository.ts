@@ -11,6 +11,7 @@ pool.on('error', (err, client) => {
 })
 
 export default class Repo {
+  
   static tokenExpiration = '1 day'
   
   static async transaction<T>(callback: (client: PoolClient) => Promise<T>) {
@@ -28,6 +29,18 @@ export default class Repo {
     }
   }
 
+  static async getEntity(token: string): Promise<{key: Buffer, fingerprint: Buffer} | null> {
+    const result = await pool.query(`
+      select key, fingerprint
+      from entities e
+      join access_token a on e.fingerprint = a.fingerprint
+      where a.uuid = $1;
+    `, [token])
+
+    if(result.rowCount === 0) return null
+    return result.rows[0]
+  }
+
   static async createAccessToken(fingerprint: Buffer): Promise<string> {
     await pool.query(`
       insert into entities 
@@ -42,17 +55,29 @@ export default class Repo {
     return token.rows[0].uuid
   }
 
-  static async authorizeAccessToken(fingerprint: Buffer, token: string): Promise<void> {
-    const result = await pool.query(`
-      update access_token set validated_at = now()
-      where 1=1
-        and fingerprint = $1
-        and uuid = $2
-        and validated_at is null
-      returning date_part('epoch',now() + interval '${this.tokenExpiration}')::int;
-    `, [fingerprint, token])
+  static async validateAccessToken(token: string, key?: Buffer) {
+    return this.transaction(async client => {
+      const result = await client.query(`
+        update access_token set validated_at = now()
+        where 1=1
+          and uuid = $2
+          and validated_at is null
+        returning fingerprint, date_part('epoch',now() + interval '${this.tokenExpiration}')::int as expires_at;
+        `, [token]
+      )
 
-    if(result.rowCount !== 1) throw new Error('invalid token/fingerprint')
+      const row = result.rows[0] as {expires_at: number, fingerprint: Buffer}
+      if(!row) return null
+
+      if(key) {
+        await client.query(
+          `update entities set key = $1 where fingerprint = $2 and key is null`,
+          [key, row.fingerprint]
+        )
+      }
+
+      return row.expires_at
+    })
   }
 
   static async checkAccessToken(token: string): Promise<void> {
