@@ -1,11 +1,10 @@
 import * as config from '../database'
 import { persistError } from './logger'
 import { Pool, PoolClient } from 'pg'
+import { env } from './environment';
 
-const pool = new Pool(config.default)
+const pool = new Pool(env.nodeEnv === 'production' ? config.production : config.development)
 
-// the pool with emit an error on behalf of any idle clients
-// it contains if a backend error or network partition happens
 pool.on('error', (err, client) => {
   persistError(err.message, err.stack!)
 })

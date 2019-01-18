@@ -12,15 +12,15 @@ services:
 
   vault:
     build: .
-    restart: "no"
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD}
-      PIPELINE_STAGE: ${PIPELINE_STAGE:?PIPELINE_STAGE}
-      NODE_ENV: ${NODE_ENV:?NODE_ENV}
-    depends_on:
-      - db
     restart: always
     ports:
       - 3001:3001
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD}
+      NODE_ENV: production
+      PIPELINE_STAGE: ${PIPELINE_STAGE:?PIPELINE_STAGE}
+    depends_on:
+      - db
+    
 volumes:
     datavolume:

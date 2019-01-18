@@ -1,13 +1,11 @@
 const config = {
-  "username": "postgres",
-  "user": "postgres",
-  "password": process.env.POSTGRES_PASSWORD,
-  "database": "postgres",
-  "host": "db",
-  "dialect": "postgres"
+  user: "postgres",
+  password: process.env.POSTGRES_PASSWORD,
+  database: "postgres",
+  host: "db"
 }
 module.exports = {
-  "development": config,
-  "production": config,
-  "default": config
+  production: config,
+  mocha: {...config, host: 'localhost', port: 5433, database: 'test'},
+  development: {...config, database: 'test'},
 }

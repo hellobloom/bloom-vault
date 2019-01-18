@@ -1,5 +1,8 @@
 import * as assert from 'assert'
-import fetch from 'node-fetch';
+import fetch, { Response } from 'node-fetch'
+import { Client } from 'pg'
+import {up, down} from '../migrations/migrations'
+import * as db from '../database'
 const openpgp = require('openpgp');
 
 const url = 'http://localhost:3001'
@@ -7,8 +10,14 @@ const url = 'http://localhost:3001'
 describe('Auth', async () => {
   let privateKey: any
   let accessToken: string
+  let client: Client
+  
+  before(async () => {
+    client = new Client(db.mocha)
+    await client.connect()
+    await down(db.mocha, false)
+    await up(db.mocha, false)
 
-  beforeEach(async () => {
     privateKey = (await openpgp.key.readArmored(`
 -----BEGIN PGP PRIVATE KEY BLOCK-----
 Version: OpenPGP.js v4.4.5
@@ -34,40 +43,51 @@ MazxloMM5canxfiOds1AKFW+TEmuTMJhBBgWCAAJBQJcQP6PAhsMAAoJEC3I
     await privateKey.decrypt('12345')
   })
 
-  describe('generate token', async () => {
-    
-    it('should request an access token', async () => {
-      const fingerprint = privateKey.getFingerprint()
+  after(async () => {
+    await client.end()
+  })
 
-      const response = await fetch(`${url}/auth/request-token?fingerprint=${fingerprint}`, {
+  beforeEach(async () => {
+    
+  })
+
+  describe('after requesting a new token', async () => {
+    let response: Response
+    
+    before(async() => {
+      response = await fetch(`${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'}
       })
-
+    })
+    
+    it('should return OK', async () => {
       assert.equal(response.status, 200);
       accessToken = (await response.json()).token
     });
 
-    it('should validate an access token', async () => {
-      const signed = await openpgp.sign({
-        message: openpgp.cleartext.fromText(accessToken),
-        privateKeys: [privateKey],
-        detached: true
-      })
-
-      const response = await fetch(`${url}/auth/validate-token`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          accessToken,
-          signature: signed.signature,
-          pgpKey: privateKey.toPublic().armor()
+    describe('after validating the token', async () => {
+      before(async() => {
+        const signed = await openpgp.sign({
+          message: openpgp.cleartext.fromText(accessToken),
+          privateKeys: [privateKey],
+          detached: true
+        })
+  
+        response = await fetch(`${url}/auth/validate-token`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            accessToken,
+            signature: signed.signature,
+            pgpKey: privateKey.toPublic().armor()
+          })
         })
       })
 
-      assert.equal(response.status, 200);
-    });
-
+      it('should return OK', async () => {
+        assert.equal(response.status, 200);
+      });
+    })
   });
-
 });

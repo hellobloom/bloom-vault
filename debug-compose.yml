@@ -3,13 +3,28 @@ version: '3.1'
 services:
 
   db:
+    env_file: .env.debug
+    image: postgres
     restart: "no"
+    volumes:
+      - datavolume:/var/lib/postgresql/data
+    
     ports:
       - "5433:5432"
-
+  
   vault:
+    build: .
     restart: "no"
     ports:
       - 3001:3001
       - 9298:9298
+    environment:
+      NODE_ENV: development
+      PIPELINE_STAGE: development
+    depends_on:
+      - db
+    env_file: .env.debug
     command: bin/debug.sh
+
+volumes:
+    datavolume:

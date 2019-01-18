@@ -1,12 +1,8 @@
-## Running
-export POSTGRES_PASSWORD=DONTUSETHISPASSWORD
+## Running debug mode
+`docker-compose -f debug-compose.yml up --build`
 
-docker-compose up
+## Running production mode
+`POSTGRES_PASSWORD=DONTUSETHISPASSWORD PIPELINE_STAGE=production docker-compose up`
 
-## Running debug
-export POSTGRES_PASSWORD=DONTUSETHISPASSWORD
-
-docker-compose -f docker-compose.yml -f debug-compose.yml up --build
-
-## Reseting (will delete data)
-docker-compose down --volumes
+## Reseting (will delete ALL data)
+`docker-compose -f debug-compose.yml down --volumes`

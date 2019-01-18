@@ -11,3 +11,4 @@ debug-compose.yml
 docker-compose.yml
 Dockerfile
 README.md
+.env.debug
