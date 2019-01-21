@@ -1,5 +1,5 @@
 import {RequestHandler, NextFunction, Request, Response} from 'express-serve-static-core'
-import Repo from './repository';
+import Repo from './repository'
 
 export class ClientFacingError extends Error {
   constructor(message: string, public status: number = 400) {
@@ -7,16 +7,16 @@ export class ClientFacingError extends Error {
   }
 }
 
-export interface HandlerResult {
+export interface IHandlerResult {
   status: number,
   body: any
 }
 
 export function asyncHandler<T>(
-  validator:(req: Request, res: Response , next: NextFunction) => Promise<T>,
-  handler: (parameters: T) => Promise<HandlerResult>
-){
-  return async(req: Request, res: Response, next: NextFunction) => {
+  validator: (req: Request, res: Response , next: NextFunction) => Promise<T>,
+  handler: (parameters: T) => Promise<IHandlerResult>,
+) {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parameters = await validator(req, res, next)
       const result = await handler(parameters)
@@ -65,15 +65,15 @@ export type Transformed<T, V extends Validators<T>> = {[P in keyof T]: InversePr
 
 export class ModelValidator<T> {
   constructor(
-    public model: T, 
+    public model: T,
     public allowMissing: OptionalCheckList<T> = {},
   ) {}
 
-  async validateProp<P extends keyof T, R>(
+  public async validateProp<P extends keyof T, R>(
     name: P,
-    callback?: Validator<T, P, R>
+    callback?: Validator<T, P, R>,
   ) {
-    let value = this.model[name]
+    const value = this.model[name]
     if (!this.allowMissing[name] && !value) {
       throw new ClientFacingError(`missing ${name}`)
     }
@@ -86,9 +86,9 @@ export class ModelValidator<T> {
     return validated || value
   }
 
-  async validate<V extends Validators<T>>(validators: V): Promise<Transformed<T, V>> {
+  public async validate<V extends Validators<T>>(validators: V): Promise<Transformed<T, V>> {
     const validated = {} as Transformed<T, V>
-    for(const validator in this.model) {
+    for (const validator in this.model) {
       validated[validator] = await this.validateProp(validator, validators[validator])
     }
     return validated

@@ -8,7 +8,7 @@ import { persistError } from './src/logger'
 
 import {meRouter} from './src/routes/me'
 import { tokenRouter as authRouter } from './src/routes/auth'
-import { ClientFacingError } from './src/requestUtils';
+import { ClientFacingError } from './src/requestUtils'
 
 const app = express()
 const server = http.createServer(app)
@@ -21,7 +21,7 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Headers', '*')
 
-  if(req.method === 'OPTIONS') {
+  if (req.method === 'OPTIONS') {
     return res.status(200).end()
   }
   return next()
@@ -44,8 +44,8 @@ console.log(`Starting server in ${env.pipelineStage} mode`)
 console.log(`Local:  http://localhost:${port}/`)
 
 process.on('unhandledRejection', error => {
-  if(error) {
+  if (error) {
     console.log(error)
     persistError(error.message, error.stack)
   }
-});
+})

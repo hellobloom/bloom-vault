@@ -26,6 +26,5 @@ const getPipelineStage = (): PipelineStages => {
 
 export const env = {
   nodeEnv: environmentVariable('NODE_ENV'),
-  pipelineStage: getPipelineStage()
+  pipelineStage: getPipelineStage(),
 }
-
