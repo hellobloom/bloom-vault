@@ -18,7 +18,8 @@
       "preLaunchTask": "tsc-watch",
       "skipFiles": [
         "<node_internals>/**/*.js",
-      ]
+      ],
+      "restart": true,
     },
     {
       "type": "node",
@@ -33,6 +34,6 @@
         "${workspaceFolder}/test/**/*.ts"
       ],
       "internalConsoleOptions": "openOnSessionStart"
-    }
+    },
   ]
 }

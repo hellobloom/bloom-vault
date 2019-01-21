@@ -7,8 +7,9 @@
     "migrate": "ts-node migrations.ts",
     "build": "tsc",
     "start": "node build/index.js",
-    "debug": "node --inspect=0.0.0.0:9298 build/index.js",
-    "test": "mocha -r ts-node/register test/*.ts"
+    "debug": "nodemon --watch ./build --inspect=0.0.0.0:9298 --nolazy ./build/index.js",
+    "test": "mocha -r ts-node/register test/*.ts",
+    "d": "docker-compose -f debug-compose.yml up --build"
   },
   "license": "UNLICENSED",
   "dependencies": {
@@ -28,6 +29,7 @@
     "dotenv": "^6.2.0",
     "mocha": "^5.2.0",
     "node-fetch": "^2.3.0",
+    "nodemon": "^1.18.9",
     "ts-node": "^7.0.1",
     "tslint": "^5.12.1",
     "typescript": "^2.9.2"

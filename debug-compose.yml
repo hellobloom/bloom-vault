@@ -22,6 +22,8 @@ services:
       - debugdb
     env_file: .env.debug
     command: bin/debug.sh
+    volumes:
+      - ./build:/app/build
 
 volumes:
     debugdata:
