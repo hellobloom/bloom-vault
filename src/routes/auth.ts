@@ -49,7 +49,9 @@ export const tokenRouter = (app: express.Application) => {
         },
         signature: async (name, value) => {
           try {
-            return await openpgp.signature.readArmored(value)
+            const sig = await openpgp.signature.readArmored(value)
+            if(sig.err) throw sig.err
+            return sig
           }
           catch(err) {
             throw new ClientFacingError(`bad ${name} format`)
@@ -58,7 +60,9 @@ export const tokenRouter = (app: express.Application) => {
         pgpKey: async (name, value) => {
           try {
             if(value) {
-              return await openpgp.key.readArmored(value)
+              const key = await openpgp.key.readArmored(value)
+              if (key.err) throw key.err
+              return key
             }
           }
           catch(err) {
@@ -88,6 +92,9 @@ export const tokenRouter = (app: express.Application) => {
         }
         pgpKey = await openpgp.key.read(entity.key)
       }
+      if(entity.fingerprint.toString('hex') !== pgpKey.keys[0].getFingerprint()) {
+        throw new ClientFacingError('unauthorized', 401)
+      }
 
       const verified = await openpgp.verify({
         signature,
@@ -99,7 +106,7 @@ export const tokenRouter = (app: express.Application) => {
         throw new ClientFacingError('unauthorized', 401)
       }
 
-      const expiresAt = await Repo.validateAccessToken(accessToken, newKey ? pgpKey.keys[0].keyPacket.write() : undefined)
+      const expiresAt = await Repo.validateAccessToken(accessToken, newKey ? pgpKey.keys[0].toPacketlist().write() : undefined)
       
       if(!expiresAt) {
         throw new ClientFacingError('unauthorized', 401)

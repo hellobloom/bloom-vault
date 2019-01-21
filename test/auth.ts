@@ -3,9 +3,12 @@ import fetch, { Response } from 'node-fetch'
 import { Client } from 'pg'
 import {up, down} from '../migrations/migrations'
 import * as db from '../database'
+import Repo from '../src/repository';
 const openpgp = require('openpgp');
+const uuid = require('uuidv4')
 
 const url = 'http://localhost:3001'
+
 
 describe('Auth', async () => {
   let privateKey: any
@@ -18,62 +21,189 @@ describe('Auth', async () => {
     await down(db.mocha, false)
     await up(db.mocha, false)
 
-    privateKey = (await openpgp.key.readArmored(`
------BEGIN PGP PRIVATE KEY BLOCK-----
-Version: OpenPGP.js v4.4.5
-Comment: https://openpgpjs.org
-
-xYYEXED+jxYJKwYBBAHaRw8BAQdA/hK4/5IJg5LiToHYNxMKLSGWTGzMa+nM
-eDssq19cnUH+CQMItAUK6e9KT+bgPlObjpG1TevGc9aVo+adTBeUqOcr8rDA
-BqFz6lFWQeGInapSP7ET3+uKs10iX1L0WZ/ewGfvOOM7/EfEgd/eKwxxMOZV
-dM0bSm9uIFNtaXRoIDxqb25AZXhhbXBsZS5jb20+wncEEBYKAB8FAlxA/o8G
-CwkHCAMCBBUICgIDFgIBAhkBAhsDAh4BAAoJEC3I+2Xo/ZRXCRUA/jwuAa4I
-PcU5D3fFZaBJxu6yJfsjuEjU05A/I8MZQfX7AQCl6xmk9iseH2ovpxASLWur
-TVty6ZT5SfjLfHzSHjjQB8eLBFxA/o8SCisGAQQBl1UBBQEBB0D4PgttGBQc
-LzfyrFxs1hWSJnx6m7g9YlP6Alc1F0kiIgMBCAf+CQMI2JKC5PqcEdvg5vDy
-M/jhd+YcDUmvE7lnJ8JoyfpdAkc0XJJ0JlWJW6CiHCsHlUfU+hGgGX5lI4Xf
-MazxloMM5canxfiOds1AKFW+TEmuTMJhBBgWCAAJBQJcQP6PAhsMAAoJEC3I
-+2Xo/ZRXM/wA/AvoW4No4T5zNH8AEkbF7/Z+o7+AcBlmd63pdFEhOeoXAP9p
-+SBXAj+RmTS38CK/cyD5ycB0BPTz1buAPCF0lAxFBA==
-=0oDL
------END PGP PRIVATE KEY BLOCK-----
-`
-    )).keys[0]
-
-    await privateKey.decrypt('12345')
+    privateKey = (await openpgp.generateKey({
+      userIds: [{ name:'Jon Smith', email:'jon@example.com' }],
+      curve: "curve25519",
+      // preferred symmetric cypher is aes256 for openPGP.js
+    })).key
   })
 
   after(async () => {
     await client.end()
   })
 
-  beforeEach(async () => {
-    
+  it('should return 400 on bad fingerprint format', async () => {
+    const badResponse = await fetch(`${url}/auth/request-token?fingerprint=${privateKey.getFingerprint() + 'A'}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'}
+    })
+
+    assert.equal(badResponse.status, 400);
   })
 
-  describe('after requesting a new token', async () => {
+  describe('after requesting a token', async () => {
     let response: Response
+    let body: any
+    let signed: any
     
     before(async() => {
       response = await fetch(`${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'}
       })
+      body = await response.json()
+      accessToken = body.token
+
+      signed = await openpgp.sign({
+        message: openpgp.cleartext.fromText(accessToken),
+        privateKeys: [privateKey],
+        detached: true
+      })
     })
     
-    it('should return OK', async () => {
+    it('should have returned returned a token', async () => {
       assert.equal(response.status, 200);
-      accessToken = (await response.json()).token
     });
+
+    it('should return 400 on bad uuid format', async () => {
+      const badResponse = await fetch(`${url}/auth/validate-token`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          accessToken: accessToken + 'a',
+          signature: signed.signature,
+          pgpKey: privateKey.toPublic().armor()
+        })
+      })
+  
+      assert.equal(badResponse.status, 400);
+      assert.equal((await badResponse.json()).error, 'bad accessToken format');
+    })
+
+    it('should return 400 on bad signature format', async () => {
+      const badResponse = await fetch(`${url}/auth/validate-token`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          accessToken: accessToken,
+          signature: 'asdfasdf',
+          pgpKey: privateKey.toPublic().armor()
+        })
+      })
+  
+      assert.equal(badResponse.status, 400);
+      assert.equal((await badResponse.json()).error, 'bad signature format');
+    })
+
+    it('should return 400 on bad pgpKey format', async () => {
+      const badResponse = await fetch(`${url}/auth/validate-token`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          accessToken: accessToken,
+          signature: signed.signature,
+          pgpKey: 'asdfasdfasdf'
+        })
+      })
+  
+      assert.equal(badResponse.status, 400);
+      assert.equal((await badResponse.json()).error, 'bad pgpKey format');
+    })
+
+    it('should return 401 on unknown uuid', async () => {
+      const badResponse = await fetch(`${url}/auth/validate-token`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          accessToken: uuid(),
+          signature: signed.signature,
+          pgpKey: privateKey.toPublic().armor()
+        })
+      })
+  
+      assert.equal(badResponse.status, 401);
+      assert.equal((await badResponse.json()).error, 'unauthorized');
+    })
+
+    it('should return 401 if no key is passed for a new entity', async () => {
+      const badResponse = await fetch(`${url}/auth/validate-token`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          accessToken: accessToken,
+          signature: signed.signature,
+        })
+      })
+  
+      assert.equal(badResponse.status, 401);
+      assert.equal((await badResponse.json()).error, 'unauthorized');
+    })
+
+    it('should return 401 if signature is invalid', async () => {
+      const differentPrivateKey = (await openpgp.generateKey({
+        userIds: [{ name:'Jon Smith', email:'jon@example.com' }],
+        curve: "curve25519",
+      })).key
+
+      const badsigned = await openpgp.sign({
+        message: openpgp.cleartext.fromText(accessToken),
+        privateKeys: [differentPrivateKey],
+        detached: true
+      })
+
+      const badResponse = await fetch(`${url}/auth/validate-token`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          accessToken: accessToken,
+          signature: badsigned.signature,
+          pgpKey: privateKey.toPublic().armor()
+        })
+      })
+  
+      assert.equal(badResponse.status, 401);
+      assert.equal((await badResponse.json()).error, 'unauthorized');
+    })
+
+    it('should return 401 if fingerprint of key passed does not match token', async () => {
+      const differentPrivateKey = (await openpgp.generateKey({
+        userIds: [{ name:'Jon Smith', email:'jon@example.com' }],
+        curve: "curve25519",
+      })).key
+
+      const badsigned = await openpgp.sign({
+        message: openpgp.cleartext.fromText(accessToken),
+        privateKeys: [differentPrivateKey],
+        detached: true
+      })
+
+      const badResponse = await fetch(`${url}/auth/validate-token`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          accessToken: accessToken,
+          signature: badsigned.signature,
+          pgpKey: differentPrivateKey.toPublic().armor()
+        })
+      })
+  
+      assert.equal(badResponse.status, 401);
+      assert.equal((await badResponse.json()).error, 'unauthorized');
+    })
+
+    it('should not be able to access a protected endpoint before the token is validated', async () => {
+      const badResponse = await fetch(`${url}/me`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+
+      assert.equal(badResponse.status, 401);
+    })
 
     describe('after validating the token', async () => {
       before(async() => {
-        const signed = await openpgp.sign({
-          message: openpgp.cleartext.fromText(accessToken),
-          privateKeys: [privateKey],
-          detached: true
-        })
-  
         response = await fetch(`${url}/auth/validate-token`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -88,6 +218,112 @@ MazxloMM5canxfiOds1AKFW+TEmuTMJhBBgWCAAJBQJcQP6PAhsMAAoJEC3I
       it('should return OK', async () => {
         assert.equal(response.status, 200);
       });
+
+      it('should return 401 if passing the same key again', async () => {
+        const badResponse = await fetch(`${url}/auth/validate-token`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            accessToken: accessToken,
+            signature: signed.signature,
+            pgpKey: privateKey.toPublic().armor()
+          })
+        })
+    
+        assert.equal(badResponse.status, 401);
+        assert.equal((await badResponse.json()).error, 'unauthorized');
+      })
+
+      describe('after requesting another token', async () => {
+        before(async() => {
+          response = await fetch(`${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+          })
+          body = await response.json()
+          accessToken = body.token
+    
+          signed = await openpgp.sign({
+            message: openpgp.cleartext.fromText(accessToken),
+            privateKeys: [privateKey],
+            detached: true
+          })
+        })
+
+        it('should have returned returned a token', async () => {
+          assert.equal(response.status, 200);
+        })
+
+        it('should have not let the key be passed again', async () => {
+          const badResponse = await fetch(`${url}/auth/validate-token`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              accessToken,
+              signature: signed.signature,
+              pgpKey: privateKey.toPublic().armor()
+            })
+          })
+
+          assert.equal(badResponse.status, 401);
+          assert.equal((await badResponse.json()).error, 'unauthorized');
+        })
+
+        describe('after validating the second token', async () => {
+          before(async() => {
+            response = await fetch(`${url}/auth/validate-token`, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({
+                accessToken,
+                signature: signed.signature,
+              })
+            })
+          })
+
+          it('should have returned returned a token', async () => {
+            assert.equal(response.status, 200);
+          })
+
+          it('should be able to access a protected endpoint', async () => {
+            const goodResponse = await fetch(`${url}/me`, {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+              }
+            })
+  
+            assert.equal(goodResponse.status, 200);
+          })
+
+          it('should not be able to access a protected endpoint with a bad token', async () => {
+            const badResponse = await fetch(`${url}/me`, {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${uuid()}`
+              }
+            })
+  
+            assert.equal(badResponse.status, 401);
+          })
+
+          describe('after the token expires', async () => {
+            before(async() => {
+              await client.query(`update access_token set validated_at = validated_at - interval '${Repo.tokenExpiration}' where uuid = $1;`, [accessToken])
+            })
+
+            it('should not be able to access a protected endpoint with an expired token', async () => {
+              const badResponse = await fetch(`${url}/me`, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${accessToken}`
+                }
+              })
+              assert.equal(badResponse.status, 401);
+            })
+          })
+        })
+      })
     })
   });
 });

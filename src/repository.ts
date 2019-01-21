@@ -80,12 +80,13 @@ export default class Repo {
     })
   }
 
-  static async checkAccessToken(token: string): Promise<void> {
+  static async checkAccessToken(token: string): Promise<Buffer | null> {
     const result = await pool.query(`
       select fingerprint from access_token where uuid = $1 and validated_at between now() - interval '${this.tokenExpiration}' and now();
     `, [token])
 
-    if(result.rowCount !== 1) throw new Error('invalid token')
+    if(result.rowCount !== 1) return null
+    return result.rows[0].fingerprint
   }
 
 }

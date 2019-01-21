@@ -1,4 +1,5 @@
 import {RequestHandler, NextFunction, Request, Response} from 'express-serve-static-core'
+import Repo from './repository';
 
 export class ClientFacingError extends Error {
   constructor(message: string, public status: number = 400) {
@@ -35,31 +36,24 @@ export const apiOnly: RequestHandler = (req, res, next) => {
   }
 }
 
-export const basicAuth = function(
-  userName: string,
-  password: string
-): RequestHandler {
-  return async (req, res, next) => {
-    try {
-      const basicAuthRegex = /(?:Basic|BASIC|basic) (\w+)/
-      const auth = req.header('Authorization')
+export const authorized: RequestHandler = async (req, res, next) => {
+  try {
+    const basicAuthRegex = /^(?:Bearer) ([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i
+    const auth = req.header('Authorization')
 
-      if (!auth) return res.status(401).end()
+    if (!auth) return res.status(401).end()
 
-      const matches = basicAuthRegex.exec(auth)
+    const matches = basicAuthRegex.exec(auth)
 
-      if (!matches) return res.status(401).end()
+    if (!matches) return res.status(401).end()
 
-      const userPass = Buffer.from(matches[1], 'base64').toString()
-
-      if (userPass !== `${userName}:${password}`) {
-        return res.status(401).end()
-      }
-
-      return next()
-    } catch (err) {
-      next(err)
+    if (!(await Repo.checkAccessToken(matches[1]))) {
+      return res.status(401).end()
     }
+
+    return next()
+  } catch (err) {
+    next(err)
   }
 }
 
