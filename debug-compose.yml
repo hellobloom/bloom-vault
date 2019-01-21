@@ -2,7 +2,7 @@ version: '3.1'
 
 services:
 
-  db:
+  debugdb:
     env_file: .env.debug
     image: postgres
     restart: "no"
@@ -12,14 +12,14 @@ services:
     ports:
       - "5433:5432"
   
-  vault:
+  debugvault:
     build: .
     restart: "no"
     ports:
       - 3001:3001
       - 9298:9298
     depends_on:
-      - db
+      - debugdb
     env_file: .env.debug
     command: bin/debug.sh
 

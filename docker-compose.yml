@@ -2,15 +2,17 @@ version: '3.1'
 
 services:
 
-  db:
+  productiondb:
     image: postgres
     restart: always
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD}
     volumes:
       - productiondata:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
 
-  vault:
+  productionvault:
     build: .
     restart: always
     ports:
@@ -20,7 +22,7 @@ services:
       NODE_ENV: production
       PIPELINE_STAGE: ${PIPELINE_STAGE:?PIPELINE_STAGE}
     depends_on:
-      - db
+      - productiondb
 
 volumes:
     productiondata:

@@ -43,15 +43,7 @@ const migrations: IMigration[] = [
   },
 ]
 
-export async function setupTestDatabase() {
-  const client = new Client(config.production)
-  await client.connect()
-  await client.query(`drop database if exists test;`)
-  await client.query('create database test;')
-  await client.end()
-}
-
-export async function up(conf = config.production, logs: boolean = true) {
+export async function up(conf: any, logs: boolean = true) {
   const client = new Client(conf)
   await client.connect()
   logs && console.log('running migrations')
@@ -101,8 +93,11 @@ export async function down(conf: any, logs: boolean = true) {
   await client.end()
 }
 
+process.on('unhandledRejection', (reason) => {
+  throw reason
+})
+
 if (!module.parent) {
-  setupTestDatabase()
-  .then(() => up())
+  up(config[process.env.NODE_ENV!])
   .catch(e => {throw e})
 }
