@@ -9,7 +9,8 @@
     "start": "node build/index.js",
     "debug": "nodemon --watch ./build --inspect=0.0.0.0:9298 --nolazy ./build/index.js",
     "test": "mocha -r ts-node/register test/*.ts",
-    "d": "docker-compose -f debug-compose.yml up --build"
+    "docker-debug": "npm run build && docker-compose -f debug-compose.yml up --build",
+    "clean": "rm -r build/*"
   },
   "license": "UNLICENSED",
   "dependencies": {
