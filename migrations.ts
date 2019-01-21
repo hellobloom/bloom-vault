@@ -1,5 +1,5 @@
 'use strict'
-import * as config from '../database'
+import * as config from './database'
 import { Client } from 'pg'
 
 interface Migration {

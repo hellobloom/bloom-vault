@@ -7,7 +7,7 @@ services:
     image: postgres
     restart: "no"
     volumes:
-      - datavolume:/var/lib/postgresql/data
+      - debugdata:/var/lib/postgresql/data
     
     ports:
       - "5433:5432"
@@ -24,4 +24,4 @@ services:
     command: bin/debug.sh
 
 volumes:
-    datavolume:
+    debugdata:

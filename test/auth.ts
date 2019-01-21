@@ -1,14 +1,15 @@
+import * as path from 'path'
+require('dotenv').config({path: path.join(__dirname, '../.env.debug')})
 import * as assert from 'assert'
 import fetch, { Response } from 'node-fetch'
 import { Client } from 'pg'
-import {up, down} from '../migrations/migrations'
+import {up, down} from '../migrations'
 import * as db from '../database'
 import Repo from '../src/repository';
 const openpgp = require('openpgp');
 const uuid = require('uuidv4')
 
 const url = 'http://localhost:3001'
-
 
 describe('Auth', async () => {
   let privateKey: any

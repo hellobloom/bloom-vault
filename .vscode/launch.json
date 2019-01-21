@@ -32,8 +32,7 @@
         "--colors", "--recursive",
         "${workspaceFolder}/test/**/*.ts"
       ],
-      "internalConsoleOptions": "openOnSessionStart",
-      "envFile": "${workspaceFolder}/.env.debug"
+      "internalConsoleOptions": "openOnSessionStart"
     }
   ]
 }

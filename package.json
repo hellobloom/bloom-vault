@@ -4,7 +4,7 @@
   "description": "e2e encrypted provider agnositc data storage",
   "main": "build/index.js",
   "scripts": {
-    "migrate": "ts-node migrations/migrations.ts",
+    "migrate": "ts-node migrations.ts",
     "build": "tsc",
     "start": "node build/index.js",
     "debug": "node --inspect=0.0.0.0:9298 build/index.js",
@@ -25,9 +25,10 @@
     "@types/node": "^10.3.4",
     "@types/node-fetch": "^2.1.4",
     "@types/pg": "^7.4.11",
+    "dotenv": "^6.2.0",
     "mocha": "^5.2.0",
-    "ts-node": "^7.0.1",
     "node-fetch": "^2.3.0",
+    "ts-node": "^7.0.1",
     "typescript": "^2.9.2"
   }
 }
