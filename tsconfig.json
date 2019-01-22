@@ -2,7 +2,7 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "es6",
-    "lib": ["es6", "dom", "esnext.asynciterable"],
+    "lib": ["es6", "dom"],
     "outDir": "build",
     "inlineSourceMap": true,
     "sourceMap": false,

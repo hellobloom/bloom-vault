@@ -1,5 +1,5 @@
 import {RequestHandler, NextFunction, Request, Response} from 'express-serve-static-core'
-import Repo from './repository'
+import Repo, { IEntity } from './repository'
 
 export class ClientFacingError extends Error {
   constructor(message: string, public status: number = 400) {
@@ -27,6 +27,24 @@ export function asyncHandler<T>(
   }
 }
 
+export function authenticatedHandler<T>(
+  validator: (req: AuthenticatedRequest, res: Response , next: NextFunction) => Promise<T>,
+  handler: (parameters: T & {entity: IEntity}) => Promise<IHandlerResult>,
+) {
+  return [
+    authorized,
+    async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+      try {
+        const parameters = await validator(req, res, next)
+        const result = await handler({...parameters, entity: req.entity})
+        res.status(result.status).json(result.body)
+      } catch (err) {
+        return next(err)
+      }
+    },
+  ]
+}
+
 export const apiOnly: RequestHandler = (req, res, next) => {
   if (req.header('Content-Type') === 'application/json') {
     next()
@@ -36,7 +54,9 @@ export const apiOnly: RequestHandler = (req, res, next) => {
   }
 }
 
-export const authorized: RequestHandler = async (req, res, next) => {
+type AuthenticatedRequest = Request & {entity: IEntity}
+
+export const authorized: RequestHandler = async (req: AuthenticatedRequest, res, next) => {
   try {
     const basicAuthRegex = /^(?:Bearer) ([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i
     const auth = req.header('Authorization')
@@ -47,9 +67,13 @@ export const authorized: RequestHandler = async (req, res, next) => {
 
     if (!matches) return res.status(401).end()
 
-    if (!(await Repo.checkAccessToken(matches[1]))) {
+    const entity = await Repo.checkAccessToken(matches[1])
+
+    if (!entity) {
       return res.status(401).end()
     }
+
+    req.entity = entity
 
     return next()
   } catch (err) {
@@ -59,7 +83,7 @@ export const authorized: RequestHandler = async (req, res, next) => {
 
 export type OptionalCheckList<T> = {[P in keyof T]?: boolean}
 export type InversePromise<T> = T extends Promise<infer K> ? K : T
-export type Validator<T, P extends keyof T, R> = (name: P, value: T[P]) => Promise<R>
+export type Validator<T, P extends keyof T, R> = (name: P, value: T[P], model: T) => Promise<R>
 export type Validators<T> = {[P in keyof T]: Validator<T, P, any>}
 export type Transformed<T, V extends Validators<T>> = {[P in keyof T]: InversePromise<ReturnType<V[P]>>}
 
@@ -81,7 +105,7 @@ export class ModelValidator<T> {
     if (!value) return value
     if (!callback) return value
 
-    const validated = await callback(name, value)
+    const validated = await callback(name, value, this.model)
 
     return validated || value
   }

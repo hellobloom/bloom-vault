@@ -193,7 +193,7 @@ describe('Auth', async () => {
     })
 
     it('should not be able to access a protected endpoint before the token is validated', async () => {
-      const badResponse = await fetch(`${url}/me`, {
+      const badResponse = await fetch(`${url}/data/me`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
@@ -287,7 +287,7 @@ describe('Auth', async () => {
           })
 
           it('should be able to access a protected endpoint', async () => {
-            const goodResponse = await fetch(`${url}/me`, {
+            const goodResponse = await fetch(`${url}/data/me`, {
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${accessToken}`,
@@ -298,7 +298,7 @@ describe('Auth', async () => {
           })
 
           it('should not be able to access a protected endpoint with a bad token', async () => {
-            const badResponse = await fetch(`${url}/me`, {
+            const badResponse = await fetch(`${url}/data/me`, {
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${uuid()}`,
@@ -317,7 +317,7 @@ describe('Auth', async () => {
             })
 
             it('should not be able to access a protected endpoint with an expired token', async () => {
-              const badResponse = await fetch(`${url}/me`, {
+              const badResponse = await fetch(`${url}/data/me`, {
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${accessToken}`,

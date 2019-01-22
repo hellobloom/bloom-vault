@@ -6,7 +6,7 @@ import {env} from './src/environment'
 
 import { persistError } from './src/logger'
 
-import {meRouter} from './src/routes/me'
+import {dataRouter} from './src/routes/data'
 import { tokenRouter as authRouter } from './src/routes/auth'
 import { ClientFacingError } from './src/requestUtils'
 
@@ -28,7 +28,7 @@ app.use((req, res, next) => {
 })
 
 authRouter(app)
-meRouter(app)
+dataRouter(app)
 
 app.get('*', (req, res, next) => res.status(404).end())
 app.post('*', (req, res, next) => res.status(404).end())

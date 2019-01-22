@@ -18,14 +18,25 @@ const migrations: IMigration[] = [
 
       create table entities (
         fingerprint pgp_fingerprint primary key,
-        key bytea unique
+        key bytea unique,
+        data_count integer not null default 0,
+        deleted_count integer not null default 0
       );
 
       create table data (
         index integer not null,
         fingerprint pgp_fingerprint references entities not null,
-        cyphertext bytea not null,
+        cyphertext bytea null,
         primary key (index, fingerprint)
+      );
+
+      create table deletions (
+        id integer not null,
+        data_id integer not null,
+        fingerprint pgp_fingerprint references entities not null,
+        signature bytea not null,
+        primary key (id, fingerprint),
+        foreign key (data_id, fingerprint) references data
       );
 
       create table access_token (
@@ -36,6 +47,7 @@ const migrations: IMigration[] = [
       `,
     down: `
       drop table access_token;
+      drop table deletions;
       drop table data;
       drop table entities;
       drop domain pgp_fingerprint;
