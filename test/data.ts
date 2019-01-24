@@ -117,7 +117,7 @@ describe('Data', () => {
           const plaintext = JSON.stringify(data)
           const message = await openpgp.encrypt({
             message: openpgp.message.fromText(plaintext),
-            publicKeys: [user.key.toPublic()],
+            // publicKeys: [user.key.toPublic()],
             privateKeys: [user.key]
           }) as openpgp.EncryptArmorResult
 
