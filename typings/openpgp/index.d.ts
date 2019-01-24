@@ -870,6 +870,7 @@ declare module 'openpgp' {
       armor(): string;
       write(): Buffer
       valid: boolean
+      packets: packet.List<packet.Signature>
     }
     /** reads an OpenPGP armored signature and returns a signature object
 

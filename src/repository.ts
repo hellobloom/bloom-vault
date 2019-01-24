@@ -39,11 +39,11 @@ export default class Repo {
         select data_id, signature
         from deletions
         where 1=1
-          and id >= $2 and ($3 is null or id <= $3)
+          and id >= $2 and ($3::integer is null or id <= $3::integer)
           and fingerprint = $1::pgp_fingerprint
         order by id;
       `,
-      [fingerprint, start, end || null],
+      [fingerprint, start, end === undefined ? null : end],
     )
     return result.rows as Array<{
       data_id: number,
@@ -51,7 +51,7 @@ export default class Repo {
     }>
   }
 
-  public static async deleteData(fingerprint: Buffer, ids: number[], signatures: Buffer[]) {
+  public static async deleteData(fingerprint: Buffer, ids: number[], signatures: Buffer[] | Uint8Array[]) {
     return this.transaction(async (client) => {
       const newCount = await client.query(
         `
@@ -61,22 +61,33 @@ export default class Repo {
         [fingerprint, ids.length],
       )
 
-      const values = ids.map((id, i) => ([
+      let values = ids.map((id, i) => ([
         fingerprint,
         newCount.rows[0].deleted_count - (ids.length - i),
         id,
-        signatures[i] || null,
+        signatures[i] === undefined ? null : signatures[i],
       ])).reduce((v1, v2) => v1.concat(v2), [])
 
-      await client.query((`
+      let query = `
         insert into deletions
-        (fingerprint           ,id ,data_id ,signature) values` + ids.map(i => (`
-        ($::pgp_fingerprint    ,$  ,$       ,$),`))).slice(0, -1)
-        ,
-        values,
-      )
+        (fingerprint           ,id ,data_id ,signature) values
+      `
+      ids.forEach((id, i) => {
+        query += `($${i * 4 + 1}::pgp_fingerprint    ,$${i * 4 + 2}  ,$${i * 4 + 3}       ,$${i * 4 + 4}),`
+      })
 
-      await client.query(`update data set cyphertext = null where fingerprint = $1::pgp_fingerprint and id in ($2);`, [fingerprint, ids])
+      query = query.slice(0, -1) + ';'
+
+      await client.query(query, values)
+
+      query = `update data set cyphertext = null where fingerprint = $1::pgp_fingerprint and id in (`
+      ids.forEach((id, i) => {
+        query += `$${i + 2},`
+      })
+      query = query.slice(0, -1) + ');'
+
+      values = [fingerprint, ...ids]
+      await client.query(query, values)
 
       return {
         deletedCount: newCount.rows[0].deleted_count as number,
@@ -93,7 +104,7 @@ export default class Repo {
           where fingerprint = $1::pgp_fingerprint and ($2::integer is null or data_count = $2::integer)
           returning data_count - 1 as id;
         `,
-        [fingerprint, id || null],
+        [fingerprint, id === undefined ? null : id],
       )
       if (result.rowCount === 0) {
         return null
@@ -123,7 +134,7 @@ export default class Repo {
           and fingerprint = $1::pgp_fingerprint
         order by id;
       `,
-      [fingerprint, start, end || null],
+      [fingerprint, start, end === undefined ? null : end],
     )
     return result.rows as Array<{
       id: number,

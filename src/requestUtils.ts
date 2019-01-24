@@ -95,42 +95,41 @@ export class ModelValidator<T> {
 
   public async validateProp<P extends keyof T, R>(
     name: P,
-    callback?: Validator<T, P, R>,
+    callback: Validator<T, P, R>,
   ) {
     const value = this.model[name]
     if (!this.allowMissing[name] && value === undefined) {
       throw new ClientFacingError(`missing ${name}`)
     }
-
-    if (value === undefined) return value
-    if (callback === undefined) return value
-
     const validated = await callback(name, value, this.model)
 
     return validated === undefined ? value : validated
   }
 
   public async validate<V extends Validators<T>>(validators: V): Promise<Transformed<T, V>> {
-    const validated = {} as Transformed<T, V>
     for (const validator in validators) {
-      validated[validator as keyof T] = await this.validateProp(validator as keyof T, validators[validator])
+      this.model[validator as keyof T] = await this.validateProp(validator as keyof T, validators[validator])
     }
-    return validated
+    return this.model as Transformed<T, V>
   }
 }
 
 type NotUndefined = object | number | boolean | string | symbol | null | bigint
 
-export async function requiredNumber(name: string, value: NotUndefined) {
+export async function requiredNumber(name: string, value: any) {
   try {
     value = Number(value)
     if (isNaN(value)) throw new Error('')
-    return value
+    return value as number
   } catch (err) {
     throw new ClientFacingError(`bad ${name} format`)
   }
 }
 
-export async function optionalNumber(name: string, value?: NotUndefined) {
-  return value === undefined ? value : await requiredNumber(name, value)
+export async function optionalNumber(name: string, value?: any) {
+  return value === undefined ? value as undefined : await requiredNumber(name, value)
+}
+
+export function dataDeletionMessage(id: number) {
+  return `delete data id ${id}`
 }

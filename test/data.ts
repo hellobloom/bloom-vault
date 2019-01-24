@@ -6,6 +6,7 @@ import { Client } from 'pg'
 import {up, down} from '../migrations'
 import * as db from '../database'
 import * as openpgp from 'openpgp'
+import { dataDeletionMessage } from '../src/requestUtils';
 
 const url = 'http://localhost:3001'
 
@@ -69,6 +70,39 @@ describe('Data', () => {
     })
   }
 
+  async function postData(token: string, cyphertext: string, id?: number) {
+    return fetch(`${url}/data`, {
+      method: 'POST',
+      body: JSON.stringify({id, cyphertext}),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+  }
+
+  async function deleteData(token: string, start: number, opts: {signatures?: string[], end?: number} = {}) {
+    return fetch(`${url}/data/${start}/${opts.end === undefined ? '' : opts.end}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        signatures: opts.signatures
+      })
+    })
+  }
+
+  async function getDeletions(token: string, start: number, end?: number) {
+    return fetch(`${url}/deletions/${start}/${end === undefined ? '' : end}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+  }
+
   before(async () => {
     client = new Client(db.mocha)
     await client.connect()
@@ -81,7 +115,8 @@ describe('Data', () => {
         curve: 'curve25519',
       })).key,
       data: [
-        {id: 0, text: 'user0data1'},
+        {id: 0, text: 'user0data0'},
+        {id: 1, text: 'user0data1'},
       ],
       accessToken: ''
     }
@@ -134,17 +169,8 @@ describe('Data', () => {
             privateKeys: [user.key]
           }) as openpgp.EncryptArmorResult
 
-          const response = await fetch(`${url}/data`, {
-            method: 'POST',
-            body: JSON.stringify({
-              id: data.id,
-              cyphertext: message.data
-            }),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${user.accessToken}`,
-            },
-          })
+          // only specify the id sometimes to test with or without it
+          await postData(user.accessToken, message.data, data.id % 2 === 0 ? data.id : undefined)
         }
       }
     })
@@ -162,7 +188,7 @@ describe('Data', () => {
       const response = await getData(firstUser.accessToken, 0)
       const body = await response.json()
       assert.equal(body[0].id, 0)
-      assert.equal(body.length, 1)
+      assert.equal(body.length, firstUser.data.length)
       const decrypted = await openpgp.decrypt({
         message: await openpgp.message.readArmored(body[0].cyphertext),
         publicKeys: [firstUser.key.toPublic()],
@@ -173,6 +199,130 @@ describe('Data', () => {
       assert.equal(data.id, firstUser.data[0].id)
       assert.equal(data.text, firstUser.data[0].text)
       assert.equal(decrypted.signatures[0].valid, true)
+    })
+
+    it('can get a range of data in order', async () => {
+      const response = await getData(secondUser.accessToken, secondUser.data.length - 2, secondUser.data.length - 1)
+      const body = await response.json() as Array<{id: number, cyphertext: string}>
+      assert.equal(body.length, 2)
+      body.forEach(async (blob, i) => {
+        const exptectedId = secondUser.data.length - 2 + i
+        const decrypted = await openpgp.decrypt({
+          message: await openpgp.message.readArmored(blob.cyphertext),
+          publicKeys: [secondUser.key.toPublic()],
+          privateKeys: [secondUser.key]
+        })
+        const plaintext = await openpgp.stream.readToEnd(decrypted.data as string)
+        const data = JSON.parse(plaintext) as IData
+        assert.equal(exptectedId, blob.id)
+        assert.equal(exptectedId, data.id)
+      })
+    })
+
+    it('should return 404 if the data does not exist', async () => {
+      const response = await getData(firstUser.accessToken, firstUser.data.length)
+      assert.equal(response.status, 404)
+    })
+
+    it('cannot insert data out of order', async () => {
+      const message = await openpgp.encrypt({
+        message: openpgp.message.fromText('test'),
+        publicKeys: [firstUser.key.toPublic()],
+        privateKeys: [firstUser.key]
+      }) as openpgp.EncryptArmorResult
+
+      const response = await postData(firstUser.accessToken, message.data, firstUser.data.length + 1)
+      const body = await response.json()
+      assert.equal(response.status, 400)
+      assert.equal(body.error, 'id not in sequence')
+    })
+
+    it('should not let too few signatures be passed if passed', async () => {
+      const signatures: string[] = []
+
+      const response = await deleteData(secondUser.accessToken, 0, {signatures})
+      const body = await response.json()
+      assert.equal(response.status, 400)
+      assert.equal(body.error, 'too many or too few signatures')
+    })
+
+    it('should not let a bad signature be used to delete', async () => {
+      const id = 0
+      const signatures = [(await openpgp.sign({
+        message: openpgp.cleartext.fromText(dataDeletionMessage(id + 1)),
+        privateKeys: [secondUser.key],
+        detached: true,
+      })).signature as string]
+
+      const response = await deleteData(secondUser.accessToken, id, {signatures})
+      const body = await response.json()
+      assert.equal(response.status, 400)
+      assert.equal(body.error, `invalid signature for id: ${id}`)
+    })
+
+    context('after deleting some data', () => {
+      let start: number
+      let end: number
+
+      before(async () => {
+        // delete the first data for user1
+        await deleteData(firstUser.accessToken, 0)
+
+        // delete the last 2 data for user2 with signatures
+        start = secondUser.data.length - 2
+        end = secondUser.data.length - 1
+        const signatures = await Promise.all([start, end].map(async id => {
+          return (await openpgp.sign({
+            message: openpgp.cleartext.fromText(dataDeletionMessage(id)),
+            privateKeys: [secondUser.key],
+            detached: true,
+          })).signature as string
+        }))
+
+        await deleteData(
+          secondUser.accessToken,
+          start,
+          {
+            end,
+            signatures
+          }
+        )
+      })
+
+      it('should update deleted count for the users', async () => {
+        let response = await getMe(secondUser.accessToken)
+        let body = await response.json()
+        assert.equal(body.dataCount, secondUser.data.length)
+        assert.equal(body.deletedCount, 2)
+
+        response = await getMe(firstUser.accessToken)
+        body = await response.json()
+        assert.equal(body.dataCount, firstUser.data.length)
+        assert.equal(body.deletedCount, 1)
+      })
+
+      it('should return validatable deletion signatures', async () => {
+        let response = await getDeletions(secondUser.accessToken, 0, 1)
+        let body = await response.json() as Array<{id: number, signature: string}>
+        assert.equal(body.length, 2)
+        assert.equal(body[0].id, start)
+        assert.equal(body[1].id, end)
+
+        for (const deletion of body) {
+          const verified = await openpgp.verify({
+            signature: await openpgp.signature.readArmored(deletion.signature),
+            message: openpgp.cleartext.fromText(dataDeletionMessage(deletion.id)),
+            publicKeys: [secondUser.key.toPublic()],
+          })
+          assert.equal(verified.signatures[0].valid, true)
+        }
+
+        response = await getDeletions(firstUser.accessToken, 0)
+        body = await response.json()
+        assert.equal(body.length, 1)
+        assert.equal(body[0].id, 0)
+      })
+
     })
   })
 })

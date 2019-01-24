@@ -1,5 +1,5 @@
 import * as express from 'express-serve-static-core'
-import {apiOnly, authenticatedHandler, ClientFacingError, ModelValidator, requiredNumber, optionalNumber} from '../requestUtils'
+import {apiOnly, authenticatedHandler, ClientFacingError, ModelValidator, requiredNumber, optionalNumber, dataDeletionMessage} from '../requestUtils'
 import Repo from '../repository'
 import * as openpgp from 'openpgp'
 
@@ -60,10 +60,7 @@ export const dataRouter = (app: express.Application) => {
       const validator = new ModelValidator(body, {id: true})
       return validator.validate(
         {
-          id: async (name, value) => {
-            if (value && typeof value !== 'number') { throw new ClientFacingError(`bad ${name} format`) }
-            return value
-          },
+          id: optionalNumber,
           cyphertext: async (name, value) => {
             try {
               // const message = await openpgp.message.readArmored(value)
@@ -98,13 +95,13 @@ export const dataRouter = (app: express.Application) => {
     },
   ))
 
-  app.delete('/data/:start/:end', apiOnly, authenticatedHandler(
+  const deleteData = authenticatedHandler(
     async (req, res, next) => {
       const validator = new ModelValidator(
         {
           start: req.params.start as number,
           end: req.params.end as number | undefined,
-          signatures: req.body as string[] | undefined,
+          signatures: req.body.signatures as string[] | undefined,
         },
         {end: true, signatures: true},
       )
@@ -113,12 +110,13 @@ export const dataRouter = (app: express.Application) => {
           start: requiredNumber,
           end: optionalNumber,
           signatures: async (name, value, model) => {
-            const expectedLength = (model.end || model.start) - model.start + 1
+            const end = model.end === undefined ? model.start : model.end
+            const expectedLength = end - model.start + 1
             if (value && value.length !== expectedLength) {
               throw new ClientFacingError(`too many or too few signatures`)
             }
             if (!value) value = []
-            const ids = [...Array(expectedLength).keys()].map(i => i + model.start)
+            const ids = [...Array(expectedLength).keys()].map(Number).map(i => i + model.start)
 
             const key = await openpgp.key.read(req.entity.key)
 
@@ -135,7 +133,7 @@ export const dataRouter = (app: express.Application) => {
 
                 const verified = await openpgp.verify({
                   signature,
-                  message: openpgp.cleartext.fromText(`delete data id ${ids[i]}`),
+                  message: openpgp.cleartext.fromText(dataDeletionMessage(ids[i])),
                   publicKeys: key.keys,
                 })
 
@@ -143,7 +141,8 @@ export const dataRouter = (app: express.Application) => {
                   throw new ClientFacingError(`invalid signature for id: ${ids[i]}`)
                 }
 
-                return signature.write() as Buffer
+                const stream = signature.packets.write()
+                return await openpgp.stream.readToEnd(stream)
               })),
               ids,
             }
@@ -152,17 +151,17 @@ export const dataRouter = (app: express.Application) => {
       )
     },
     async ({entity: {fingerprint}, signatures: {signatures, ids}}) => {
-      const result = await Repo.deleteData(fingerprint, ids, signatures)
-      if (!result) throw new ClientFacingError('data already deleted')
-
       return {
         status: 200,
-        body:  result,
+        body: await Repo.deleteData(fingerprint, ids, signatures),
       }
     },
-  ))
+  )
 
-  app.get('/data/deletions/:start/:end', apiOnly, authenticatedHandler(
+  app.delete('/data/:start/:end', apiOnly, deleteData)
+  app.delete('/data/:start', apiOnly, deleteData)
+
+  const getDeletions = authenticatedHandler(
     async (req, res, next) => {
       const validator = new ModelValidator(
         {
@@ -175,14 +174,22 @@ export const dataRouter = (app: express.Application) => {
     },
     async ({entity: {fingerprint}, start, end}) => {
       const result = await Repo.getDeletions(fingerprint, start, end)
-      if (!result) throw new ClientFacingError('data already deleted')
       return {
         status: 200,
-        body: await Promise.all(result.map(async r => ({
-          id: r.data_id,
-          signature: (await openpgp.signature.read(r.signature!)).armor(),
-        }))),
+        body: await Promise.all(result.map(async r => {
+          let signature: string | null = null
+          if (r.signature) {
+            signature = (await openpgp.signature.read(r.signature)).armor()
+          }
+          return {
+            id: r.data_id,
+            signature
+          }
+        })),
       }
     },
-  ))
+  )
+
+  app.get('/deletions/:start/:end', apiOnly, getDeletions)
+  app.get('/deletions/:start', apiOnly, getDeletions)
 }

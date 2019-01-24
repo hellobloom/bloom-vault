@@ -34,7 +34,7 @@ const migrations: IMigration[] = [
         id integer not null,
         data_id integer not null,
         fingerprint pgp_fingerprint references entities not null,
-        signature bytea not null,
+        signature bytea null,
         primary key (id, fingerprint),
         foreign key (data_id, fingerprint) references data
       );
