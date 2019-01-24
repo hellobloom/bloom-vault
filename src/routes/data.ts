@@ -1,5 +1,5 @@
 import * as express from 'express-serve-static-core'
-import {apiOnly, asyncHandler, authorized, authenticatedHandler, ClientFacingError, ModelValidator} from '../requestUtils'
+import {apiOnly, authenticatedHandler, ClientFacingError, ModelValidator, requiredNumber, optionalNumber} from '../requestUtils'
 import Repo from '../repository'
 import * as openpgp from 'openpgp'
 
@@ -22,22 +22,11 @@ export const dataRouter = (app: express.Application) => {
     },
   ))
 
-  app.get('/data/:start/:end', apiOnly, authenticatedHandler(
+  const getData = authenticatedHandler(
     async (req, res, next) => {
-      const body = req.query as { start: number, end: number | undefined }
+      const body = req.params as { start: number, end: number | undefined }
       const validator = new ModelValidator(body, {end: true})
-      return validator.validate(
-        {
-          start: async (name, value) => {
-            if (!value || typeof value !== 'number') { throw new ClientFacingError(`bad ${name} format`) }
-            return value
-          },
-          end: async (name, value) => {
-            if (value && typeof value !== 'number') { throw new ClientFacingError(`bad ${name} format`) }
-            return value
-          },
-        },
-      )
+      return validator.validate({start: requiredNumber, end: optionalNumber})
     },
     async ({entity: {fingerprint}, start, end}) => {
       const entities = await Repo.getData(fingerprint, start, end)
@@ -45,15 +34,25 @@ export const dataRouter = (app: express.Application) => {
       return {
         status: 200,
         body: await Promise.all(entities.map(async e => {
-          const cyphertext = e.cyphertext && (await openpgp.message.read(e.cyphertext))
+          let cyphertext: string | null = null
+          if (e.cyphertext) {
+            const array = new Uint8Array(e.cyphertext)
+            const message = await openpgp.message.read(array)
+            const stream = await message.armor()
+            cyphertext = await openpgp.stream.readToEnd(stream)
+          }
           return {
             id: e.id,
-            cyphertext: cyphertext!.armor(),
+            cyphertext,
           }
         })),
       }
     },
-  ))
+  )
+
+  app.get('/data/:start', apiOnly, getData)
+
+  app.get('/data/:start/:end', apiOnly, getData)
 
   app.post('/data', apiOnly, authenticatedHandler(
     async (req, res, next) => {
@@ -67,12 +66,19 @@ export const dataRouter = (app: express.Application) => {
           },
           cyphertext: async (name, value) => {
             try {
-              const message = await openpgp.message.readArmored(value)
+              // const message = await openpgp.message.readArmored(value)
+              // if (message.err) { throw message.err }
+              // const compressed = message.compress(openpgp.enums.compression.zip)
+              // const stream = compressed.packets.write()
+              // const bytes = await openpgp.stream.readToEnd(stream)
+              // return bytes
+
+              const message = await openpgp.message.readArmored(value) as any
               if (message.err) { throw message.err }
-              const compressed = message.compress(openpgp.enums.compression.zip)
-              const stream = compressed.packets[0].write()
+              const stream = message.packets.write()
               const bytes = await openpgp.stream.readToEnd(stream)
               return bytes
+
             } catch (err) {
               throw new ClientFacingError(`bad ${name} format`)
             }
@@ -81,7 +87,7 @@ export const dataRouter = (app: express.Application) => {
       )
     },
     async ({entity: {fingerprint}, id, cyphertext}) => {
-      const newId = await Repo.insertData(fingerprint, cyphertext as any, id)
+      const newId = await Repo.insertData(fingerprint, cyphertext, id)
       if (newId === null) throw new ClientFacingError('id not in sequence')
       return {
         status: 200,
@@ -94,25 +100,18 @@ export const dataRouter = (app: express.Application) => {
 
   app.delete('/data/:start/:end', apiOnly, authenticatedHandler(
     async (req, res, next) => {
-      const body = req.query as { start: number, end: number | undefined }
       const validator = new ModelValidator(
         {
-          start: req.query.start as number,
-          end: req.query.end as number | undefined,
+          start: req.params.start as number,
+          end: req.params.end as number | undefined,
           signatures: req.body as string[] | undefined,
         },
         {end: true, signatures: true},
       )
       return validator.validate(
         {
-          start: async (name, value) => {
-            if (!value || typeof value !== 'number') { throw new ClientFacingError(`bad ${name} format`) }
-            return value
-          },
-          end: async (name, value) => {
-            if (value && typeof value !== 'number') { throw new ClientFacingError(`bad ${name} format`) }
-            return value
-          },
+          start: requiredNumber,
+          end: optionalNumber,
           signatures: async (name, value, model) => {
             const expectedLength = (model.end || model.start) - model.start + 1
             if (value && value.length !== expectedLength) {
@@ -155,6 +154,7 @@ export const dataRouter = (app: express.Application) => {
     async ({entity: {fingerprint}, signatures: {signatures, ids}}) => {
       const result = await Repo.deleteData(fingerprint, ids, signatures)
       if (!result) throw new ClientFacingError('data already deleted')
+
       return {
         status: 200,
         body:  result,
@@ -164,26 +164,14 @@ export const dataRouter = (app: express.Application) => {
 
   app.get('/data/deletions/:start/:end', apiOnly, authenticatedHandler(
     async (req, res, next) => {
-      const body = req.query as { start: number, end: number | undefined }
       const validator = new ModelValidator(
         {
-          start: req.query.start as number,
-          end: req.query.end as number | undefined,
+          start: req.params.start as number,
+          end: req.params.end as number | undefined,
         },
         {end: true},
       )
-      return validator.validate(
-        {
-          start: async (name, value) => {
-            if (!value || typeof value !== 'number') { throw new ClientFacingError(`bad ${name} format`) }
-            return value
-          },
-          end: async (name, value) => {
-            if (value && typeof value !== 'number') { throw new ClientFacingError(`bad ${name} format`) }
-            return value
-          },
-        },
-      )
+      return validator.validate({start: requiredNumber, end: optionalNumber})
     },
     async ({entity: {fingerprint}, start, end}) => {
       const result = await Repo.getDeletions(fingerprint, start, end)

@@ -105,7 +105,7 @@ export default class Repo {
         `
           insert into data
           (fingerprint  ,id  ,cyphertext) values
-          ($1           ,$2     ,$3);
+          ($1           ,$2  ,$3);
         `,
         [fingerprint, newId, cyphertext],
       )
@@ -119,7 +119,7 @@ export default class Repo {
         select id, cyphertext
         from data
         where 1=1
-          and id >= $2 and ($3 is null or id <= $3)
+          and id >= $2 and ($3::integer is null or id <= $3::integer)
           and fingerprint = $1::pgp_fingerprint
         order by id;
       `,

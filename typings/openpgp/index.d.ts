@@ -64,7 +64,7 @@ declare module 'openpgp' {
 
   export namespace packet {
 
-    export interface List<PACKET_TYPE> extends Iterable<PACKET_TYPE> {
+    export class List<PACKET_TYPE> extends Iterable<PACKET_TYPE> {
       [index: number]: PACKET_TYPE;
       length: number;
       read(bytes: Uint8Array): void;
@@ -116,6 +116,7 @@ declare module 'openpgp' {
     export class Compressed extends BasePacket {
       tag: enums.packet.compressed;
       write(): NodeStream<Uint8Array>
+      decompress(): message.Message
     }
 
     export class SymEncryptedIntegrityProtected extends BasePacket {
@@ -868,6 +869,7 @@ declare module 'openpgp' {
       err: Error
       armor(): string;
       write(): Buffer
+      valid: boolean
     }
     /** reads an OpenPGP armored signature and returns a signature object
 
@@ -940,7 +942,7 @@ declare module 'openpgp' {
       appendSignature(detachedSignature: string | Uint8Array): void;
 
       compress(compression: enums.compression.zip): {
-        packets: [packet.Compressed]
+        packets: packet.List<packet.Compressed>
       }
     }
 
@@ -976,7 +978,7 @@ declare module 'openpgp' {
      * @returns {Message}           new message object
      * @static
      */
-    function read(input: Uint8Array): Promise<Message>;
+    function read(input: Uint8Array, fromStream?: boolean): Promise<Message>;
   }
 
   export class HKP {
@@ -1083,6 +1085,7 @@ declare module 'openpgp' {
 
   export namespace stream {
     function readToEnd<T extends Uint8Array | string>(input: Stream<T> | T, concat?: (list: T[]) => T): Promise<T>;
+    function getReader(data: Uint8Array): any
     // concat
     // slice
     // clone

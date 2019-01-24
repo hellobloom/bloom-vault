@@ -98,16 +98,16 @@ export class ModelValidator<T> {
     callback?: Validator<T, P, R>,
   ) {
     const value = this.model[name]
-    if (!this.allowMissing[name] && !value) {
+    if (!this.allowMissing[name] && value === undefined) {
       throw new ClientFacingError(`missing ${name}`)
     }
 
-    if (!value) return value
-    if (!callback) return value
+    if (value === undefined) return value
+    if (callback === undefined) return value
 
     const validated = await callback(name, value, this.model)
 
-    return validated || value
+    return validated === undefined ? value : validated
   }
 
   public async validate<V extends Validators<T>>(validators: V): Promise<Transformed<T, V>> {
@@ -117,4 +117,20 @@ export class ModelValidator<T> {
     }
     return validated
   }
+}
+
+type NotUndefined = object | number | boolean | string | symbol | null | bigint
+
+export async function requiredNumber(name: string, value: NotUndefined) {
+  try {
+    value = Number(value)
+    if (isNaN(value)) throw new Error('')
+    return value
+  } catch (err) {
+    throw new ClientFacingError(`bad ${name} format`)
+  }
+}
+
+export async function optionalNumber(name: string, value?: NotUndefined) {
+  return value === undefined ? value : await requiredNumber(name, value)
 }
