@@ -85,12 +85,12 @@ export default class Repo {
     })
   }
 
-  public static async insertData(fingerprint: Buffer, cyphertext: Buffer, id?: number) {
+  public static async insertData(fingerprint: Buffer, cyphertext: Buffer | Uint8Array, id?: number) {
     return this.transaction(async (client) => {
       const result = await client.query(
         `
           update entities set data_count = data_count + 1
-          where fingerprint = $1::pgp_fingerprint and ($2 is null or data_count = $2)
+          where fingerprint = $1::pgp_fingerprint and ($2::integer is null or data_count = $2::integer)
           returning data_count - 1 as id;
         `,
         [fingerprint, id || null],
@@ -163,7 +163,7 @@ export default class Repo {
     return token.rows[0].uuid
   }
 
-  public static async validateAccessToken(token: string, key?: Buffer) {
+  public static async validateAccessToken(token: string, key?: Buffer | Uint8Array) {
     return this.transaction(async client => {
       const result = await client.query(`
         update access_token set validated_at = now()

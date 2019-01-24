@@ -7,9 +7,9 @@ export class ClientFacingError extends Error {
   }
 }
 
-export interface IHandlerResult {
+export interface IHandlerResult<T extends object = {}> {
   status: number,
-  body: any
+  body: T
 }
 
 export function asyncHandler<T>(
@@ -112,8 +112,8 @@ export class ModelValidator<T> {
 
   public async validate<V extends Validators<T>>(validators: V): Promise<Transformed<T, V>> {
     const validated = {} as Transformed<T, V>
-    for (const validator in this.model) {
-      validated[validator] = await this.validateProp(validator, validators[validator])
+    for (const validator in validators) {
+      validated[validator as keyof T] = await this.validateProp(validator as keyof T, validators[validator])
     }
     return validated
   }

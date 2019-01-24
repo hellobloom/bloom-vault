@@ -1,7 +1,7 @@
 import * as express from 'express-serve-static-core'
 import {apiOnly, asyncHandler, authorized, authenticatedHandler, ClientFacingError, ModelValidator} from '../requestUtils'
 import Repo from '../repository'
-const openpgp = require('openpgp')
+import * as openpgp from 'openpgp'
 
 export const dataRouter = (app: express.Application) => {
 
@@ -9,10 +9,11 @@ export const dataRouter = (app: express.Application) => {
     async (req, res, next) => {},
     async ({entity: {fingerprint}}) => {
       const entity = await Repo.getMe(fingerprint)
+      const {keys} = await openpgp.key.read(entity.key)
       return {
         status: 200,
         body: {
-          pgpKey: await openpgp.key.read(entity.key).publicKeyArmored,
+          pgpKey: keys[0].armor(),
           pgpKeyFingerprint: fingerprint.toString('hex').toUpperCase(),
           dataCount: entity.data_count,
           deletedCount: entity.deleted_count,
@@ -47,7 +48,7 @@ export const dataRouter = (app: express.Application) => {
           const cyphertext = e.cyphertext && (await openpgp.message.read(e.cyphertext))
           return {
             id: e.id,
-            cyphertext: cyphertext.armor(),
+            cyphertext: cyphertext!.armor(),
           }
         })),
       }
@@ -68,7 +69,10 @@ export const dataRouter = (app: express.Application) => {
             try {
               const message = await openpgp.message.readArmored(value)
               if (message.err) { throw message.err }
-              return message.write() as Buffer
+              const compressed = message.compress(openpgp.enums.compression.zip)
+              const stream = compressed.packets[0].write()
+              const bytes = await openpgp.stream.readToEnd(stream)
+              return bytes
             } catch (err) {
               throw new ClientFacingError(`bad ${name} format`)
             }
@@ -77,8 +81,8 @@ export const dataRouter = (app: express.Application) => {
       )
     },
     async ({entity: {fingerprint}, id, cyphertext}) => {
-      const newId = await Repo.insertData(fingerprint, cyphertext, id)
-      if (!newId) throw new ClientFacingError('id not in sequence')
+      const newId = await Repo.insertData(fingerprint, cyphertext as any, id)
+      if (newId === null) throw new ClientFacingError('id not in sequence')
       return {
         status: 200,
         body: {
@@ -117,11 +121,11 @@ export const dataRouter = (app: express.Application) => {
             if (!value) value = []
             const ids = [...Array(expectedLength).keys()].map(i => i + model.start)
 
-            const key = await openpgp.key.readArmored(req.entity.key)
+            const key = await openpgp.key.read(req.entity.key)
 
             return {
               signatures: await Promise.all(value.map(async (s, i) => {
-                let signature: any
+                let signature: openpgp.signature.Signature
 
                 try {
                   signature = await openpgp.signature.readArmored(s)
@@ -188,7 +192,7 @@ export const dataRouter = (app: express.Application) => {
         status: 200,
         body: await Promise.all(result.map(async r => ({
           id: r.data_id,
-          signature: await (openpgp.signature.read(r.signature)).armor(),
+          signature: (await openpgp.signature.read(r.signature!)).armor(),
         }))),
       }
     },

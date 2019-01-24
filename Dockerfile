@@ -11,6 +11,7 @@ COPY package*.json ./
 RUN npm install
 
 COPY database.js tsconfig.json index.ts migrations.ts ./
+COPY typings typings
 COPY src src
 RUN npm run build
 CMD bin/start.sh

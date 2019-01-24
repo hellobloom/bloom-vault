@@ -21,7 +21,8 @@
         "no-empty": false,
         "curly": false,
         "max-classes-per-file": false,
-        "forin": false
+        "forin": false,
+        "trailing-comma":false
     },
     "rulesDirectory": []
 }

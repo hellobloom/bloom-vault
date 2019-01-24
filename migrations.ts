@@ -24,10 +24,10 @@ const migrations: IMigration[] = [
       );
 
       create table data (
-        index integer not null,
+        id integer not null,
         fingerprint pgp_fingerprint references entities not null,
         cyphertext bytea null,
-        primary key (index, fingerprint)
+        primary key (id, fingerprint)
       );
 
       create table deletions (

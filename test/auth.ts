@@ -6,13 +6,13 @@ import { Client } from 'pg'
 import {up, down} from '../migrations'
 import * as db from '../database'
 import Repo from '../src/repository'
-const openpgp = require('openpgp')
+import * as openpgp from 'openpgp'
 const uuid = require('uuidv4')
 
 const url = 'http://localhost:3001'
 
 describe('Auth', async () => {
-  let privateKey: any
+  let privateKey: openpgp.key.Key
   let accessToken: string
   let client: Client
 
@@ -45,7 +45,7 @@ describe('Auth', async () => {
   describe('after requesting a token', async () => {
     let response: Response
     let body: any
-    let signed: any
+    let signed: openpgp.SignResult
 
     before(async () => {
       response = await fetch(`${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}`, {

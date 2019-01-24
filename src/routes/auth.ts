@@ -1,7 +1,7 @@
 import * as express from 'express-serve-static-core'
 import {apiOnly, asyncHandler, ClientFacingError, ModelValidator} from '../requestUtils'
 import Repo from '../repository'
-const openpgp = require('openpgp')
+import * as openpgp from 'openpgp'
 
 export const tokenRouter = (app: express.Application) => {
 
@@ -63,6 +63,7 @@ export const tokenRouter = (app: express.Application) => {
               if (key.err) { throw key.err }
               return key
             }
+            return undefined
           } catch (err) {
             throw new ClientFacingError(`bad ${name} format`)
           }
