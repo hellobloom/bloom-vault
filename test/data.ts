@@ -6,7 +6,7 @@ import { Client } from 'pg'
 import {up, down} from '../migrations'
 import * as db from '../database'
 import * as openpgp from 'openpgp'
-import { dataDeletionMessage } from '../src/requestUtils';
+import { dataDeletionMessage, udefCoalesce } from '../src/requestUtils'
 
 const url = 'http://localhost:3001'
 
@@ -62,7 +62,7 @@ describe('Data', () => {
   }
 
   async function getData(token: string, start: number, end?: number) {
-    return fetch(`${url}/data/${start}/${end === undefined ? '' : end}`, {
+    return fetch(`${url}/data/${start}/${udefCoalesce(end, '')}`, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
@@ -82,7 +82,7 @@ describe('Data', () => {
   }
 
   async function deleteData(token: string, start: number, opts: {signatures?: string[], end?: number} = {}) {
-    return fetch(`${url}/data/${start}/${opts.end === undefined ? '' : opts.end}`, {
+    return fetch(`${url}/data/${start}/${udefCoalesce(opts.end, '')}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -95,7 +95,7 @@ describe('Data', () => {
   }
 
   async function getDeletions(token: string, start: number, end?: number) {
-    return fetch(`${url}/deletions/${start}/${end === undefined ? '' : end}`, {
+    return fetch(`${url}/deletions/${start}/${udefCoalesce(end, '')}`, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
@@ -185,7 +185,7 @@ describe('Data', () => {
     })
 
     it('can verify the returned data', async () => {
-      const response = await getData(firstUser.accessToken, 0)
+      const response = await getData(firstUser.accessToken, 0, firstUser.data.length - 1)
       const body = await response.json()
       assert.equal(body[0].id, 0)
       assert.equal(body.length, firstUser.data.length)
@@ -321,6 +321,19 @@ describe('Data', () => {
         body = await response.json()
         assert.equal(body.length, 1)
         assert.equal(body[0].id, 0)
+      })
+
+      it('should return null for the data', async () => {
+        let response = await getData(secondUser.accessToken, start, end)
+        let body = await response.json() as Array<{id: number, cyphertext: string}>
+        assert.equal(body.length, 2)
+        assert.equal(body[0].cyphertext, null)
+        assert.equal(body[1].cyphertext, null)
+
+        response = await getData(firstUser.accessToken, 0)
+        body = await response.json()
+        assert.equal(body.length, 1)
+        assert.equal(body[0].cyphertext, null)
       })
 
     })

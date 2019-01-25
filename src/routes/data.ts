@@ -1,5 +1,14 @@
 import * as express from 'express-serve-static-core'
-import {apiOnly, authenticatedHandler, ClientFacingError, ModelValidator, requiredNumber, optionalNumber, dataDeletionMessage} from '../requestUtils'
+import {
+  apiOnly,
+  authenticatedHandler,
+  ClientFacingError,
+  ModelValidator,
+  requiredNumber,
+  optionalNumber,
+  dataDeletionMessage,
+  udefCoalesce
+} from '../requestUtils'
 import Repo from '../repository'
 import * as openpgp from 'openpgp'
 
@@ -110,8 +119,7 @@ export const dataRouter = (app: express.Application) => {
           start: requiredNumber,
           end: optionalNumber,
           signatures: async (name, value, model) => {
-            const end = model.end === undefined ? model.start : model.end
-            const expectedLength = end - model.start + 1
+            const expectedLength = udefCoalesce(model.end, model.start) - model.start + 1
             if (value && value.length !== expectedLength) {
               throw new ClientFacingError(`too many or too few signatures`)
             }

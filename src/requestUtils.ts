@@ -83,7 +83,7 @@ export const authorized: RequestHandler = async (req: AuthenticatedRequest, res,
 
 export type OptionalCheckList<T> = {[P in keyof T]?: boolean}
 export type InversePromise<T> = T extends Promise<infer K> ? K : T
-export type Validator<T, P extends keyof T, R> = (name: P, value: T[P], model: T) => Promise<R>
+export type Validator<T, P extends keyof T, R> = (name: P, value: T[P], model: T) => Promise<R> | R
 export type Validators<T> = {[P in keyof T]: Validator<T, P, any>}
 export type Transformed<T, V extends Validators<T>> = {[P in keyof T]: InversePromise<ReturnType<V[P]>>}
 
@@ -114,9 +114,23 @@ export class ModelValidator<T> {
   }
 }
 
-type NotUndefined = object | number | boolean | string | symbol | null | bigint
+type NotUndefined<T> = T extends undefined ? never : T
+type ArrayType<T> = T extends Array<infer K> ? K : never
 
-export async function requiredNumber(name: string, value: any) {
+export function notUndefined<T>(value: T): value is NotUndefined<T> {
+  if (value === undefined) return false
+  return true
+}
+
+export function udefCoalesce<T1, T2 extends any[]>(value: T1, ...replacements: T2): NotUndefined<T1 | ArrayType<T2>> {
+  if (notUndefined(value)) return value
+  for (const replacement of replacements) {
+    if (notUndefined(replacement)) return replacement
+  }
+  throw new Error('could not replace value')
+}
+
+export function requiredNumber(name: string, value: any) {
   try {
     value = Number(value)
     if (isNaN(value)) throw new Error('')
@@ -126,8 +140,8 @@ export async function requiredNumber(name: string, value: any) {
   }
 }
 
-export async function optionalNumber(name: string, value?: any) {
-  return value === undefined ? value as undefined : await requiredNumber(name, value)
+export function optionalNumber(name: string, value?: any) {
+  return value === undefined ? value as undefined : requiredNumber(name, value)
 }
 
 export function dataDeletionMessage(id: number) {

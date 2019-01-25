@@ -2,6 +2,7 @@ import * as config from '../database'
 import { persistError } from './logger'
 import { Pool, PoolClient } from 'pg'
 import { env } from './environment'
+import { udefCoalesce } from './requestUtils'
 
 const pool = new Pool(env.nodeEnv === 'production' ? config.production : config.development)
 
@@ -43,12 +44,34 @@ export default class Repo {
           and fingerprint = $1::pgp_fingerprint
         order by id;
       `,
-      [fingerprint, start, end === undefined ? null : end],
+      [fingerprint, start, udefCoalesce(end, null)],
     )
     return result.rows as Array<{
       data_id: number,
       signature: Buffer | null,
     }>
+  }
+
+  public static in(count: number, starting: number = 0) {
+    let query = `(`
+    const ids = [...Array(count).keys()].map(Number).map(i => i + starting)
+    ids.forEach((id) => {
+      query += `$${id},`
+    })
+    return query.slice(0, -1) + ')'
+  }
+
+  public static values(types: string[], rowCount: number) {
+    let query = ``
+    const rows = [...Array(rowCount).keys()].map(Number)
+    rows.forEach((row) => {
+      query += `(`
+      types.forEach((type, i) => {
+        query += `$${row * types.length + i + 1}::${type},`
+      })
+      query = query.slice(0, -1) + '),'
+    })
+    return query.slice(0, -1)
   }
 
   public static async deleteData(fingerprint: Buffer, ids: number[], signatures: Buffer[] | Uint8Array[]) {
@@ -61,33 +84,25 @@ export default class Repo {
         [fingerprint, ids.length],
       )
 
-      let values = ids.map((id, i) => ([
+      const query = `
+        insert into deletions
+        (fingerprint,           id,        data_id,   signature) values ${this.values(
+        ['pgp_fingerprint',    'integer', 'integer', 'bytea'], ids.length
+        )};
+      `
+      const values = ids.map((id, i) => ([
         fingerprint,
         newCount.rows[0].deleted_count - (ids.length - i),
         id,
-        signatures[i] === undefined ? null : signatures[i],
+        udefCoalesce(signatures[i], null),
       ])).reduce((v1, v2) => v1.concat(v2), [])
 
-      let query = `
-        insert into deletions
-        (fingerprint           ,id ,data_id ,signature) values
-      `
-      ids.forEach((id, i) => {
-        query += `($${i * 4 + 1}::pgp_fingerprint    ,$${i * 4 + 2}  ,$${i * 4 + 3}       ,$${i * 4 + 4}),`
-      })
-
-      query = query.slice(0, -1) + ';'
-
       await client.query(query, values)
 
-      query = `update data set cyphertext = null where fingerprint = $1::pgp_fingerprint and id in (`
-      ids.forEach((id, i) => {
-        query += `$${i + 2},`
-      })
-      query = query.slice(0, -1) + ');'
-
-      values = [fingerprint, ...ids]
-      await client.query(query, values)
+      await client.query(
+        `update data set cyphertext = null where fingerprint = $1::pgp_fingerprint and id in ${this.in(ids.length, 2)};`,
+        [fingerprint, ...ids]
+      )
 
       return {
         deletedCount: newCount.rows[0].deleted_count as number,
@@ -104,7 +119,7 @@ export default class Repo {
           where fingerprint = $1::pgp_fingerprint and ($2::integer is null or data_count = $2::integer)
           returning data_count - 1 as id;
         `,
-        [fingerprint, id === undefined ? null : id],
+        [fingerprint, udefCoalesce(id, null)],
       )
       if (result.rowCount === 0) {
         return null
@@ -130,11 +145,11 @@ export default class Repo {
         select id, cyphertext
         from data
         where 1=1
-          and id >= $2 and ($3::integer is null or id <= $3::integer)
+          and id >= $2 and id <= coalesce($3::integer, $2)
           and fingerprint = $1::pgp_fingerprint
         order by id;
       `,
-      [fingerprint, start, end === undefined ? null : end],
+      [fingerprint, start, udefCoalesce(end, null)],
     )
     return result.rows as Array<{
       id: number,
