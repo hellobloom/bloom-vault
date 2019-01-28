@@ -3,6 +3,7 @@
 
 ## Running debug mode
 ```npm install```
+
 ```npm run docker-debug```
 
 use the VSCode debug profiles to attach the debugger to the server or the tests or both
