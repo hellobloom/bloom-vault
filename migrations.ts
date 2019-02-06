@@ -44,8 +44,19 @@ const migrations: IMigration[] = [
         fingerprint    pgp_fingerprint not null references entities,
         validated_at timestamp with time zone
       );
+      create table ip_call_count
+      (
+        ip varchar(39) not null,
+        created_at timestamp default now() not null,
+        updated_at timestamp default now() not null,
+        endpoint varchar(50) not null,
+        minute smallint default date_part('minute'::text, CURRENT_TIMESTAMP) not null,
+        count integer default 1 not null,
+        constraint ip_call_count_pkey primary key (ip, endpoint)
+      );
       `,
     down: `
+      drop table ip_call_count;
       drop table access_token;
       drop table deletions;
       drop table data;

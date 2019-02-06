@@ -158,6 +158,23 @@ describe('Data', () => {
     }
   })
 
+  describe('after spamming an endpoint', async () => {
+    let response: Response
+    before(async () => {
+      for (let i = 0; i < 60; i++) {
+        response = await getMe(firstUser.accessToken)
+      }
+    })
+
+    after(async () => {
+      await client.query('delete from ip_call_count;')
+    })
+
+    it('should hit a reate limit', () => {
+      assert.equal(response.status, 429)
+    })
+  })
+
   context('after inserting some data', () => {
     before(async () => {
       for (const user of users) {

@@ -94,6 +94,21 @@ export const authorized: RequestHandler = async (
   }
 }
 
+export function ipRateLimited(maxPerMinute: number, endpoint: string): RequestHandler {
+  return async (req, res, next) => {
+    try {
+      const count = await Repo.updateCallCount(req.ip, endpoint)
+      if (count > maxPerMinute) {
+        console.log('IP rate limited violation')
+        return res.status(429).end()
+      }
+      return next()
+    } catch (err) {
+      next(err)
+    }
+  }
+}
+
 export type OptionalCheckList<T> = {[P in keyof T]?: boolean}
 export type InversePromise<T> = T extends Promise<infer K> ? K : T
 export type Validator<T, P extends keyof T, R> = (

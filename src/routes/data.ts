@@ -7,14 +7,15 @@ import {
   requiredNumber,
   optionalNumber,
   dataDeletionMessage,
-  udefCoalesce
+  udefCoalesce,
+  ipRateLimited
 } from '../requestUtils'
 import Repo from '../repository'
 import * as openpgp from 'openpgp'
 
 export const dataRouter = (app: express.Application) => {
 
-  app.get('/data/me', apiOnly, authenticatedHandler(
+  app.get('/data/me', ipRateLimited(60, 'me'), apiOnly, authenticatedHandler(
     async (req, res, next) => {},
     async ({entity: {fingerprint}}) => {
       const entity = await Repo.getMe(fingerprint)
@@ -59,11 +60,11 @@ export const dataRouter = (app: express.Application) => {
     },
   )
 
-  app.get('/data/:start', apiOnly, getData)
+  app.get('/data/:start', ipRateLimited(60, 'get-data'), apiOnly, getData)
 
-  app.get('/data/:start/:end', apiOnly, getData)
+  app.get('/data/:start/:end', ipRateLimited(60, 'get-data'), apiOnly, getData)
 
-  app.post('/data', apiOnly, authenticatedHandler(
+  app.post('/data', ipRateLimited(60, 'post-data'), apiOnly, authenticatedHandler(
     async (req, res, next) => {
       const body = req.body as { id: number | undefined, cyphertext: string }
       const validator = new ModelValidator(body, {id: true})
@@ -166,8 +167,8 @@ export const dataRouter = (app: express.Application) => {
     },
   )
 
-  app.delete('/data/:start/:end', apiOnly, deleteData)
-  app.delete('/data/:start', apiOnly, deleteData)
+  app.delete('/data/:start/:end', ipRateLimited(60, 'delete-data'), apiOnly, deleteData)
+  app.delete('/data/:start', ipRateLimited(60, 'delete-data'), apiOnly, deleteData)
 
   const getDeletions = authenticatedHandler(
     async (req, res, next) => {
@@ -198,6 +199,6 @@ export const dataRouter = (app: express.Application) => {
     },
   )
 
-  app.get('/deletions/:start/:end', apiOnly, getDeletions)
-  app.get('/deletions/:start', apiOnly, getDeletions)
+  app.get('/deletions/:start/:end', ipRateLimited(60, 'deletions'), apiOnly, getDeletions)
+  app.get('/deletions/:start', ipRateLimited(60, 'deletions'), apiOnly, getDeletions)
 }

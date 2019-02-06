@@ -4,6 +4,7 @@ import {
   asyncHandler,
   ClientFacingError,
   ModelValidator,
+  ipRateLimited,
 } from '../requestUtils'
 import Repo from '../repository'
 import * as openpgp from 'openpgp'
@@ -12,6 +13,7 @@ import regularExpressions from '../regularExpressions'
 export const tokenRouter = (app: express.Application) => {
   app.post(
     '/auth/request-token',
+    ipRateLimited(20, 'request-token'),
     apiOnly,
     asyncHandler(
       async (req, res, next) => {
@@ -46,6 +48,7 @@ export const tokenRouter = (app: express.Application) => {
 
   app.post(
     '/auth/validate-token',
+    ipRateLimited(20, 'validate-token'),
     apiOnly,
     asyncHandler(
       async (req, res, next) => {
