@@ -4,13 +4,18 @@ import * as bodyParser from 'body-parser'
 
 import {env} from './src/environment'
 
-import { persistError } from './src/logger'
+import {persistError} from './src/logger'
 
 import {dataRouter} from './src/routes/data'
-import { tokenRouter as authRouter } from './src/routes/auth'
-import { ClientFacingError } from './src/requestUtils'
+import {tokenRouter as authRouter} from './src/routes/auth'
+import {ClientFacingError} from './src/requestUtils'
+
+const helmet = require('helmet')
 
 const app = express()
+
+app.use(helmet())
+
 const server = http.createServer(app)
 const port = 3001
 server.listen(port)
@@ -33,12 +38,20 @@ dataRouter(app)
 app.get('*', (req, res, next) => res.status(404).end())
 app.post('*', (req, res, next) => res.status(404).end())
 
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const message = err instanceof ClientFacingError ? err.message : 'Something went wrong'
-  const status = err instanceof ClientFacingError ? err.status : 500
-  res.status(status).json({error: message})
-  persistError(err.message, err.stack!)
-})
+app.use(
+  (
+    err: Error,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    const message =
+      err instanceof ClientFacingError ? err.message : 'Something went wrong'
+    const status = err instanceof ClientFacingError ? err.status : 500
+    res.status(status).json({error: message})
+    persistError(err.message, err.stack!)
+  }
+)
 
 console.log(`Starting server in ${env.pipelineStage} mode`)
 console.log(`Local:  http://localhost:${port}/`)
