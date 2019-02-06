@@ -174,7 +174,7 @@ describe('Data', () => {
       await client.query('delete from ip_call_count;')
     })
 
-    it('should hit a reate limit', () => {
+    it('should hit a rate limit', () => {
       assert.equal(response.status, 429)
     })
   })

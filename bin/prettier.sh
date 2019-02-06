@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source './bin/shared/strict-mode.sh'
+source './bin/strict-mode.sh'
 
 list_prettier_supported_files() {
   git ls-files '.babelrc' '.prettierrc' '.sequelizerc' '*.css' '*.js' '*.json' '*.md' '*.ts' '*.tsx'
