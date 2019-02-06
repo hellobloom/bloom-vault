@@ -1,10 +1,12 @@
 import * as config from '../database'
-import { persistError } from './logger'
-import { Pool, PoolClient } from 'pg'
-import { env } from './environment'
-import { udefCoalesce } from './requestUtils'
+import {persistError} from './logger'
+import {Pool, PoolClient} from 'pg'
+import {env} from './environment'
+import {udefCoalesce} from './requestUtils'
 
-const pool = new Pool(env.nodeEnv === 'production' ? config.production : config.development)
+const pool = new Pool(
+  env.nodeEnv === 'production' ? config.production : config.development
+)
 
 pool.on('error', (err, client) => {
   persistError(err.message, err.stack!)
@@ -16,7 +18,6 @@ export interface IEntity {
 }
 
 export default class Repo {
-
   public static tokenExpiration = '1 day'
 
   public static async transaction<T>(callback: (client: PoolClient) => Promise<T>) {
@@ -34,7 +35,11 @@ export default class Repo {
     }
   }
 
-  public static async getDeletions(fingerprint: Buffer, start: number, end?: number) {
+  public static async getDeletions(
+    fingerprint: Buffer,
+    start: number,
+    end?: number
+  ) {
     const result = await pool.query(
       `
         select data_id, signature
@@ -44,18 +49,18 @@ export default class Repo {
           and fingerprint = $1::pgp_fingerprint
         order by id;
       `,
-      [fingerprint, start, udefCoalesce(end, null)],
+      [fingerprint, start, udefCoalesce(end, null)]
     )
     return result.rows as Array<{
-      data_id: number,
-      signature: Buffer | null,
+      data_id: number
+      signature: Buffer | null
     }>
   }
 
   public static in(count: number, starting: number = 0) {
     let query = `(`
     const ids = [...Array(count).keys()].map(Number).map(i => i + starting)
-    ids.forEach((id) => {
+    ids.forEach(id => {
       query += `$${id},`
     })
     return query.slice(0, -1) + ')'
@@ -64,7 +69,7 @@ export default class Repo {
   public static values(types: string[], rowCount: number) {
     let query = ``
     const rows = [...Array(rowCount).keys()].map(Number)
-    rows.forEach((row) => {
+    rows.forEach(row => {
       query += `(`
       types.forEach((type, i) => {
         query += `$${row * types.length + i + 1}::${type},`
@@ -74,33 +79,43 @@ export default class Repo {
     return query.slice(0, -1)
   }
 
-  public static async deleteData(fingerprint: Buffer, ids: number[], signatures: Buffer[] | Uint8Array[]) {
-    return this.transaction(async (client) => {
+  public static async deleteData(
+    fingerprint: Buffer,
+    ids: number[],
+    signatures: Buffer[] | Uint8Array[]
+  ) {
+    return this.transaction(async client => {
       const newCount = await client.query(
         `
           update entities set deleted_count = deleted_count + $2
           where fingerprint = $1::pgp_fingerprint
           returning deleted_count, data_count;`,
-        [fingerprint, ids.length],
+        [fingerprint, ids.length]
       )
 
       const query = `
         insert into deletions
         (fingerprint,           id,        data_id,   signature) values ${this.values(
-        ['pgp_fingerprint',    'integer', 'integer', 'bytea'], ids.length
+          ['pgp_fingerprint', 'integer', 'integer', 'bytea'],
+          ids.length
         )};
       `
-      const values = ids.map((id, i) => ([
-        fingerprint,
-        newCount.rows[0].deleted_count - (ids.length - i),
-        id,
-        udefCoalesce(signatures[i], null),
-      ])).reduce((v1, v2) => v1.concat(v2), [])
+      const values = ids
+        .map((id, i) => [
+          fingerprint,
+          newCount.rows[0].deleted_count - (ids.length - i),
+          id,
+          udefCoalesce(signatures[i], null),
+        ])
+        .reduce((v1, v2) => v1.concat(v2), [])
 
       await client.query(query, values)
 
       await client.query(
-        `update data set cyphertext = null where fingerprint = $1::pgp_fingerprint and id in ${this.in(ids.length, 2)};`,
+        `update data set cyphertext = null where fingerprint = $1::pgp_fingerprint and id in ${this.in(
+          ids.length,
+          2
+        )};`,
         [fingerprint, ...ids]
       )
 
@@ -111,15 +126,19 @@ export default class Repo {
     })
   }
 
-  public static async insertData(fingerprint: Buffer, cyphertext: Buffer | Uint8Array, id?: number) {
-    return this.transaction(async (client) => {
+  public static async insertData(
+    fingerprint: Buffer,
+    cyphertext: Buffer | Uint8Array,
+    id?: number
+  ) {
+    return this.transaction(async client => {
       const result = await client.query(
         `
           update entities set data_count = data_count + 1
           where fingerprint = $1::pgp_fingerprint and ($2::integer is null or data_count = $2::integer)
           returning data_count - 1 as id;
         `,
-        [fingerprint, udefCoalesce(id, null)],
+        [fingerprint, udefCoalesce(id, null)]
       )
       if (result.rowCount === 0) {
         return null
@@ -133,7 +152,7 @@ export default class Repo {
           (fingerprint  ,id  ,cyphertext) values
           ($1           ,$2  ,$3);
         `,
-        [fingerprint, newId, cyphertext],
+        [fingerprint, newId, cyphertext]
       )
       return newId
     })
@@ -149,66 +168,92 @@ export default class Repo {
           and fingerprint = $1::pgp_fingerprint
         order by id;
       `,
-      [fingerprint, start, udefCoalesce(end, null)],
+      [fingerprint, start, udefCoalesce(end, null)]
     )
     return result.rows as Array<{
-      id: number,
-      cyphertext: Buffer | null,
+      id: number
+      cyphertext: Buffer | null
     }>
   }
 
   public static async getMe(fingerprint: Buffer) {
-    const result = await pool.query(`select key, data_count, deleted_count from entities where fingerprint = $1::pgp_fingerprint;`, [fingerprint])
-    if (result.rowCount === 0) { throw new Error('could not find entity') }
-    return result.rows[0] as {data_count: number, key: Buffer, deleted_count: number}
+    const result = await pool.query(
+      `select key, data_count, deleted_count from entities where fingerprint = $1::pgp_fingerprint;`,
+      [fingerprint]
+    )
+    if (result.rowCount === 0) {
+      throw new Error('could not find entity')
+    }
+    return result.rows[0] as {data_count: number; key: Buffer; deleted_count: number}
   }
 
-  public static async getEntity(token: string): Promise<{key: Buffer, fingerprint: Buffer} | null> {
-    const result = await pool.query(`
+  public static async getEntity(
+    token: string
+  ): Promise<{key: Buffer; fingerprint: Buffer} | null> {
+    const result = await pool.query(
+      `
       select key, e.fingerprint
       from entities e
       join access_token a on e.fingerprint = a.fingerprint
       where a.uuid = $1;
-    `, [token])
+    `,
+      [token]
+    )
 
-    if (result.rowCount === 0) { return null }
+    if (result.rowCount === 0) {
+      return null
+    }
     return result.rows[0]
   }
 
   public static async createAccessToken(fingerprint: Buffer): Promise<string> {
-    await pool.query(`
+    await pool.query(
+      `
       insert into entities
       (fingerprint) select ($1::pgp_fingerprint)
       where not exists (select 1 from entities where fingerprint = $1::pgp_fingerprint);
-    `, [fingerprint])
+    `,
+      [fingerprint]
+    )
 
-    const token = await pool.query(`
+    const token = await pool.query(
+      `
       insert into access_token (fingerprint) values ($1) returning uuid;
-    `, [fingerprint])
+    `,
+      [fingerprint]
+    )
 
     return token.rows[0].uuid
   }
 
   public static async validateAccessToken(token: string, key?: Buffer | Uint8Array) {
     return this.transaction(async client => {
-      const result = await client.query(`
+      const result = await client.query(
+        `
         update access_token set validated_at = now()
         where 1=1
           and uuid = $1
           and validated_at is null
-        returning fingerprint, date_part('epoch',now() + interval '${this.tokenExpiration}')::int as expires_at;
-        `, [token],
+        returning fingerprint, date_part('epoch',now() + interval '${
+          this.tokenExpiration
+        }')::int as expires_at;
+        `,
+        [token]
       )
 
-      const row = result.rows[0] as {expires_at: number, fingerprint: Buffer}
-      if (!row) { return null }
+      const row = result.rows[0] as {expires_at: number; fingerprint: Buffer}
+      if (!row) {
+        return null
+      }
 
       if (key) {
         const update = await client.query(
           `update entities set key = $1 where fingerprint::pgp_fingerprint = $2 and key is null`,
-          [key, row.fingerprint],
+          [key, row.fingerprint]
         )
-        if (update.rowCount !== 1) { return null }
+        if (update.rowCount !== 1) {
+          return null
+        }
       }
 
       return row.expires_at
@@ -216,19 +261,27 @@ export default class Repo {
   }
 
   public static async checkAccessToken(token: string) {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       select e.fingerprint, e.key
       from access_token at
       join entities e on e.fingerprint = at.fingerprint
-      where uuid = $1 and validated_at between now() - interval '${this.tokenExpiration}' and now();
-    `, [token])
+      where uuid = $1 and validated_at between now() - interval '${
+        this.tokenExpiration
+      }' and now();
+    `,
+      [token]
+    )
 
-    if (result.rowCount !== 1) { return null }
+    if (result.rowCount !== 1) {
+      return null
+    }
     return result.rows[0] as IEntity
   }
 
   public static async updateCallCount(ip: string, endpoint: string) {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
     insert into "ip_call_count" as existing
     (ip   ,endpoint) values
     ($1  ,$2)
@@ -243,9 +296,10 @@ export default class Repo {
       minute = default,
       updated_at = default
     returning count;
-    `, [ip, endpoint])
+    `,
+      [ip, endpoint]
+    )
 
     return result.rows[0].count as number
   }
-
 }

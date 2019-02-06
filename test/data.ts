@@ -1,22 +1,22 @@
 import * as path from 'path'
 require('dotenv').config({path: path.join(__dirname, '../.env.debug')})
 import * as assert from 'assert'
-import fetch, { Response } from 'node-fetch'
-import { Client } from 'pg'
+import fetch, {Response} from 'node-fetch'
+import {Client} from 'pg'
 import {up, down} from '../migrations'
 import * as db from '../database'
 import * as openpgp from 'openpgp'
-import { dataDeletionMessage, udefCoalesce } from '../src/requestUtils'
+import {dataDeletionMessage, udefCoalesce} from '../src/requestUtils'
 
 const url = 'http://localhost:3001'
 
 interface IData {
-  id: number,
+  id: number
   text: string
 }
 
 interface IUser {
-  key: openpgp.key.Key,
+  key: openpgp.key.Key
   data: IData[]
   accessToken: string
 }
@@ -28,10 +28,13 @@ describe('Data', () => {
   let secondUser: IUser
 
   async function requestToken(user: IUser) {
-    const response = await fetch(`${url}/auth/request-token?fingerprint=${user.key.getFingerprint()}`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-    })
+    const response = await fetch(
+      `${url}/auth/request-token?fingerprint=${user.key.getFingerprint()}`,
+      {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+      }
+    )
     const body = await response.json()
     user.accessToken = body.token
   }
@@ -56,7 +59,7 @@ describe('Data', () => {
     return fetch(`${url}/data/me`, {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     })
   }
@@ -65,7 +68,7 @@ describe('Data', () => {
     return fetch(`${url}/data/${start}/${udefCoalesce(end, '')}`, {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     })
   }
@@ -76,21 +79,25 @@ describe('Data', () => {
       body: JSON.stringify({id, cyphertext}),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     })
   }
 
-  async function deleteData(token: string, start: number, opts: {signatures?: string[], end?: number} = {}) {
+  async function deleteData(
+    token: string,
+    start: number,
+    opts: {signatures?: string[]; end?: number} = {}
+  ) {
     return fetch(`${url}/data/${start}/${udefCoalesce(opts.end, '')}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        signatures: opts.signatures
-      })
+        signatures: opts.signatures,
+      }),
     })
   }
 
@@ -98,7 +105,7 @@ describe('Data', () => {
     return fetch(`${url}/deletions/${start}/${udefCoalesce(end, '')}`, {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     })
   }
@@ -111,19 +118,16 @@ describe('Data', () => {
 
     firstUser = {
       key: (await openpgp.generateKey({
-        userIds: [{ name: 'Jon Smith' }],
+        userIds: [{name: 'Jon Smith'}],
         curve: 'curve25519',
       })).key,
-      data: [
-        {id: 0, text: 'user0data0'},
-        {id: 1, text: 'user0data1'},
-      ],
-      accessToken: ''
+      data: [{id: 0, text: 'user0data0'}, {id: 1, text: 'user0data1'}],
+      accessToken: '',
     }
 
     secondUser = {
       key: (await openpgp.generateKey({
-        userIds: [{ name: 'Jon Doe' }],
+        userIds: [{name: 'Jon Doe'}],
         curve: 'curve25519',
       })).key,
       data: [
@@ -131,7 +135,7 @@ describe('Data', () => {
         {id: 1, text: 'user1data1'},
         {id: 2, text: 'user1data2'},
       ],
-      accessToken: ''
+      accessToken: '',
     }
 
     users = [firstUser, secondUser]
@@ -180,14 +184,18 @@ describe('Data', () => {
       for (const user of users) {
         for (const data of user.data) {
           const plaintext = JSON.stringify(data)
-          const message = await openpgp.encrypt({
+          const message = (await openpgp.encrypt({
             message: openpgp.message.fromText(plaintext),
             publicKeys: [user.key.toPublic()],
-            privateKeys: [user.key]
-          }) as openpgp.EncryptArmorResult
+            privateKeys: [user.key],
+          })) as openpgp.EncryptArmorResult
 
           // only specify the id sometimes to test with or without it
-          await postData(user.accessToken, message.data, data.id % 2 === 0 ? data.id : undefined)
+          await postData(
+            user.accessToken,
+            message.data,
+            data.id % 2 === 0 ? data.id : undefined
+          )
         }
       }
     })
@@ -202,14 +210,18 @@ describe('Data', () => {
     })
 
     it('can verify the returned data', async () => {
-      const response = await getData(firstUser.accessToken, 0, firstUser.data.length - 1)
+      const response = await getData(
+        firstUser.accessToken,
+        0,
+        firstUser.data.length - 1
+      )
       const body = await response.json()
       assert.equal(body[0].id, 0)
       assert.equal(body.length, firstUser.data.length)
       const decrypted = await openpgp.decrypt({
         message: await openpgp.message.readArmored(body[0].cyphertext),
         publicKeys: [firstUser.key.toPublic()],
-        privateKeys: [firstUser.key]
+        privateKeys: [firstUser.key],
       })
       const plaintext = await openpgp.stream.readToEnd(decrypted.data as string)
       const data = JSON.parse(plaintext) as IData
@@ -219,15 +231,19 @@ describe('Data', () => {
     })
 
     it('can get a range of data in order', async () => {
-      const response = await getData(secondUser.accessToken, secondUser.data.length - 2, secondUser.data.length - 1)
-      const body = await response.json() as Array<{id: number, cyphertext: string}>
+      const response = await getData(
+        secondUser.accessToken,
+        secondUser.data.length - 2,
+        secondUser.data.length - 1
+      )
+      const body = (await response.json()) as Array<{id: number; cyphertext: string}>
       assert.equal(body.length, 2)
       body.forEach(async (blob, i) => {
         const exptectedId = secondUser.data.length - 2 + i
         const decrypted = await openpgp.decrypt({
           message: await openpgp.message.readArmored(blob.cyphertext),
           publicKeys: [secondUser.key.toPublic()],
-          privateKeys: [secondUser.key]
+          privateKeys: [secondUser.key],
         })
         const plaintext = await openpgp.stream.readToEnd(decrypted.data as string)
         const data = JSON.parse(plaintext) as IData
@@ -242,13 +258,17 @@ describe('Data', () => {
     })
 
     it('cannot insert data out of order', async () => {
-      const message = await openpgp.encrypt({
+      const message = (await openpgp.encrypt({
         message: openpgp.message.fromText('test'),
         publicKeys: [firstUser.key.toPublic()],
-        privateKeys: [firstUser.key]
-      }) as openpgp.EncryptArmorResult
+        privateKeys: [firstUser.key],
+      })) as openpgp.EncryptArmorResult
 
-      const response = await postData(firstUser.accessToken, message.data, firstUser.data.length + 1)
+      const response = await postData(
+        firstUser.accessToken,
+        message.data,
+        firstUser.data.length + 1
+      )
       const body = await response.json()
       assert.equal(response.status, 400)
       assert.equal(body.error, 'id not in sequence')
@@ -265,11 +285,13 @@ describe('Data', () => {
 
     it('should not let a bad signature be used to delete', async () => {
       const id = 0
-      const signatures = [(await openpgp.sign({
-        message: openpgp.cleartext.fromText(dataDeletionMessage(id + 1)),
-        privateKeys: [secondUser.key],
-        detached: true,
-      })).signature as string]
+      const signatures = [
+        (await openpgp.sign({
+          message: openpgp.cleartext.fromText(dataDeletionMessage(id + 1)),
+          privateKeys: [secondUser.key],
+          detached: true,
+        })).signature as string,
+      ]
 
       const response = await deleteData(secondUser.accessToken, id, {signatures})
       const body = await response.json()
@@ -288,22 +310,20 @@ describe('Data', () => {
         // delete the last 2 data for user2 with signatures
         start = secondUser.data.length - 2
         end = secondUser.data.length - 1
-        const signatures = await Promise.all([start, end].map(async id => {
-          return (await openpgp.sign({
-            message: openpgp.cleartext.fromText(dataDeletionMessage(id)),
-            privateKeys: [secondUser.key],
-            detached: true,
-          })).signature as string
-        }))
-
-        await deleteData(
-          secondUser.accessToken,
-          start,
-          {
-            end,
-            signatures
-          }
+        const signatures = await Promise.all(
+          [start, end].map(async id => {
+            return (await openpgp.sign({
+              message: openpgp.cleartext.fromText(dataDeletionMessage(id)),
+              privateKeys: [secondUser.key],
+              detached: true,
+            })).signature as string
+          })
         )
+
+        await deleteData(secondUser.accessToken, start, {
+          end,
+          signatures,
+        })
       })
 
       it('should update deleted count for the users', async () => {
@@ -320,7 +340,7 @@ describe('Data', () => {
 
       it('should return validatable deletion signatures', async () => {
         let response = await getDeletions(secondUser.accessToken, 0, 1)
-        let body = await response.json() as Array<{id: number, signature: string}>
+        let body = (await response.json()) as Array<{id: number; signature: string}>
         assert.equal(body.length, 2)
         assert.equal(body[0].id, start)
         assert.equal(body[1].id, end)
@@ -342,7 +362,7 @@ describe('Data', () => {
 
       it('should return null for the data', async () => {
         let response = await getData(secondUser.accessToken, start, end)
-        let body = await response.json() as Array<{id: number, cyphertext: string}>
+        let body = (await response.json()) as Array<{id: number; cyphertext: string}>
         assert.equal(body.length, 2)
         assert.equal(body[0].cyphertext, null)
         assert.equal(body[1].cyphertext, null)
@@ -352,7 +372,6 @@ describe('Data', () => {
         assert.equal(body.length, 1)
         assert.equal(body[0].cyphertext, null)
       })
-
     })
   })
 })

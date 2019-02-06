@@ -1,10 +1,10 @@
 'use strict'
 import * as config from './database'
-import { Client } from 'pg'
+import {Client} from 'pg'
 
 interface IMigration {
-  name: string,
-  up: string,
+  name: string
+  up: string
   down: string
 }
 
@@ -71,12 +71,19 @@ export async function up(conf: any, logs: boolean = true) {
   await client.connect()
   logs && console.log('running migrations')
 
-  await client.query(`create table if not exists migrations (name text primary key);`)
+  await client.query(
+    `create table if not exists migrations (name text primary key);`
+  )
 
   for (const migration of migrations) {
-    const result = await client.query(`select name from migrations where name = $1`, [migration.name])
+    const result = await client.query(
+      `select name from migrations where name = $1`,
+      [migration.name]
+    )
 
-    if (result.rowCount !== 0) { continue }
+    if (result.rowCount !== 0) {
+      continue
+    }
     logs && console.log('running ' + migration.name)
     try {
       await client.query('BEGIN')
@@ -96,12 +103,19 @@ export async function down(conf: any, logs: boolean = true) {
   await client.connect()
   logs && console.log('reverting migrations')
 
-  await client.query(`create table if not exists migrations (name text primary key);`)
+  await client.query(
+    `create table if not exists migrations (name text primary key);`
+  )
 
   for (const migration of migrations.reverse()) {
-    const result = await client.query(`select name from migrations where name = $1`, [migration.name])
+    const result = await client.query(
+      `select name from migrations where name = $1`,
+      [migration.name]
+    )
 
-    if (result.rowCount === 0) { continue }
+    if (result.rowCount === 0) {
+      continue
+    }
     logs && console.log('reverting ' + migration.name)
     try {
       await client.query('BEGIN')
@@ -116,11 +130,12 @@ export async function down(conf: any, logs: boolean = true) {
   await client.end()
 }
 
-process.on('unhandledRejection', (reason) => {
+process.on('unhandledRejection', reason => {
   throw reason
 })
 
 if (!module.parent) {
-  up(config[process.env.NODE_ENV!])
-  .catch(e => {throw e})
+  up(config[process.env.NODE_ENV!]).catch(e => {
+    throw e
+  })
 }

@@ -94,7 +94,10 @@ export const authorized: RequestHandler = async (
   }
 }
 
-export function ipRateLimited(maxPerMinute: number, endpoint: string): RequestHandler {
+export function ipRateLimited(
+  maxPerMinute: number,
+  endpoint: string
+): RequestHandler {
   return async (req, res, next) => {
     try {
       const count = await Repo.updateCallCount(req.ip, endpoint)
