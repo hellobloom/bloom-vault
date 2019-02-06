@@ -6,6 +6,7 @@
   "scripts": {
     "migrate": "ts-node migrations.ts",
     "build": "tsc",
+    "watch": "tsc --watch",
     "start": "node build/index.js",
     "debug": "nodemon --watch ./build --inspect=0.0.0.0:9298 --nolazy ./build/index.js",
     "test": "mocha -r ts-node/register test/*.ts",
