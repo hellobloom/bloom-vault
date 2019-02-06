@@ -1,11 +1,11 @@
 import * as express from 'express-serve-static-core'
-import {apiOnly, asyncHandler, ClientFacingError, ModelValidator} from '../requestUtils'
+import {apiOnly, asyncHandler, ClientFacingError, ModelValidator, ipRateLimited} from '../requestUtils'
 import Repo from '../repository'
 import * as openpgp from 'openpgp'
 
 export const tokenRouter = (app: express.Application) => {
 
-  app.post('/auth/request-token', apiOnly, asyncHandler(
+  app.post('/auth/request-token', ipRateLimited(20, 'request-token'), apiOnly, asyncHandler(
     async (req, res, next) => {
       const query = req.query as { fingerprint: string }
       const validator = new ModelValidator(query)
@@ -32,7 +32,7 @@ export const tokenRouter = (app: express.Application) => {
     },
   ))
 
-  app.post('/auth/validate-token', apiOnly, asyncHandler(
+  app.post('/auth/validate-token', ipRateLimited(20, 'validate-token'), apiOnly, asyncHandler(
     async (req, res, next) => {
       const body = req.body as {
         accessToken: string,

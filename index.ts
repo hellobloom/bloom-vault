@@ -21,6 +21,10 @@ const port = 3001
 server.listen(port)
 app.use(bodyParser.json({limit: '10mb'}))
 
+if (env.trustProxy === true) {
+  app.enable('trust proxy')
+}
+
 // coors
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*')

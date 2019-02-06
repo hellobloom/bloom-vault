@@ -227,4 +227,25 @@ export default class Repo {
     return result.rows[0] as IEntity
   }
 
+  public static async updateCallCount(ip: string, endpoint: string) {
+    const result = await pool.query(`
+    insert into "ip_call_count" as existing
+    (ip   ,endpoint) values
+    ($1  ,$2)
+    on conflict(ip, endpoint) do update set
+      count = case
+        when
+          existing.minute <> EXTRACT(MINUTE FROM current_timestamp)
+          or current_timestamp - existing.updated_at > interval '1 minute'
+        then 1
+        else existing.count + 1
+      end,
+      minute = default,
+      updated_at = default
+    returning count;
+    `, [ip, endpoint])
+
+    return result.rows[0].count as number
+  }
+
 }
