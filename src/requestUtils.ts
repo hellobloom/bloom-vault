@@ -5,6 +5,7 @@ import {
   Response,
 } from 'express-serve-static-core'
 import Repo, {IEntity} from './repository'
+import regularExpressions from './regularExpressions'
 
 export class ClientFacingError extends Error {
   constructor(message: string, public status: number = 400) {
@@ -65,9 +66,6 @@ export const apiOnly: RequestHandler = (req, res, next) => {
 
 type AuthenticatedRequest = Request & {entity: IEntity}
 
-export const getBasicAuthRegex = () =>
-  /^(?:Bearer) ([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i
-
 export const authorized: RequestHandler = async (
   req: AuthenticatedRequest,
   res,
@@ -77,7 +75,7 @@ export const authorized: RequestHandler = async (
     const auth = req.header('Authorization')
     if (!auth) return res.status(401).end()
 
-    const basicAuthRegex = getBasicAuthRegex()
+    const basicAuthRegex = regularExpressions.requestUtils.basicAuth
     const matches = basicAuthRegex.exec(auth)
 
     if (!matches) return res.status(401).end()
