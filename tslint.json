@@ -20,7 +20,10 @@
     "curly": false,
     "max-classes-per-file": false,
     "forin": false,
-    "trailing-comma": false
+    "trailing-comma": false,
+    "object-literal-key-quotes": {
+      "options": "as-needed"
+    }
   },
   "rulesDirectory": []
 }
