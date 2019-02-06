@@ -4,7 +4,6 @@
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
-
     {
       "type": "node",
       "request": "attach",
@@ -12,14 +11,10 @@
       "port": 9298,
       "localRoot": "${workspaceFolder}",
       "remoteRoot": "/app",
-      "outFiles": [
-        "${workspaceFolder}/build/**/*.js"
-      ],
+      "outFiles": ["${workspaceFolder}/build/**/*.js"],
       "preLaunchTask": "tsc-watch",
-      "skipFiles": [
-        "<node_internals>/**/*.js",
-      ],
-      "restart": true,
+      "skipFiles": ["<node_internals>/**/*.js"],
+      "restart": true
     },
     {
       "type": "node",
@@ -27,14 +22,19 @@
       "name": "Mocha Tests",
       "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
       "args": [
-        "--require", "ts-node/register",
-        "-u", "tdd",
-        "--timeout", "999999",
-        "--colors", "--recursive",
-        "--grep", "Data",
+        "--require",
+        "ts-node/register",
+        "-u",
+        "tdd",
+        "--timeout",
+        "999999",
+        "--colors",
+        "--recursive",
+        "--grep",
+        "Data",
         "${workspaceFolder}/test/**/*.ts"
       ],
       "internalConsoleOptions": "openOnSessionStart"
-    },
+    }
   ]
 }

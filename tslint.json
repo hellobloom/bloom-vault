@@ -1,28 +1,26 @@
 {
-    "defaultSeverity": "error",
-    "extends": [
-        "tslint:recommended"
-    ],
-    "jsRules": {},
-    "rules": {
-        "quotemark": [true, "single", "jsx-double", "avoid-escape"],
-        "ordered-imports": false,
-        "no-var-requires": false,
-        "semicolon": {
-            "options":"never"
-        },
-        "no-console":false,
-        "arrow-parens":false,
-        "object-literal-sort-keys": false,
-        "max-line-length": {
-            "options":[150]
-        },
-        "no-unused-expression": false,
-        "no-empty": false,
-        "curly": false,
-        "max-classes-per-file": false,
-        "forin": false,
-        "trailing-comma":false
+  "defaultSeverity": "error",
+  "extends": ["tslint:recommended"],
+  "jsRules": {},
+  "rules": {
+    "quotemark": [true, "single", "jsx-double", "avoid-escape"],
+    "ordered-imports": false,
+    "no-var-requires": false,
+    "semicolon": {
+      "options": "never"
     },
-    "rulesDirectory": []
+    "no-console": false,
+    "arrow-parens": false,
+    "object-literal-sort-keys": false,
+    "max-line-length": {
+      "options": [150]
+    },
+    "no-unused-expression": false,
+    "no-empty": false,
+    "curly": false,
+    "max-classes-per-file": false,
+    "forin": false,
+    "trailing-comma": false
+  },
+  "rulesDirectory": []
 }

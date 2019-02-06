@@ -1,8 +1,8 @@
 const config = {
-  user: "postgres",
+  user: 'postgres',
   password: process.env.POSTGRES_PASSWORD,
-  database: "postgres",
-  host: "productiondb"
+  database: 'postgres',
+  host: 'productiondb',
 }
 module.exports = {
   production: config,

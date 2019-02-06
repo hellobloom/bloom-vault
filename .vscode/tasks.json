@@ -1,16 +1,16 @@
 {
   "version": "2.0.0",
   "tasks": [
-   {
-     "label": "tsc-watch",
-     "command": "node_modules/.bin/tsc --watch",
-     "type": "shell",
-     "isBackground": true,
-     "group": "build",
-     "problemMatcher": "$tsc-watch",
-     "presentation": {
-       "reveal": "always"
-     }
-   }
- ]
+    {
+      "label": "tsc-watch",
+      "command": "node_modules/.bin/tsc --watch",
+      "type": "shell",
+      "isBackground": true,
+      "group": "build",
+      "problemMatcher": "$tsc-watch",
+      "presentation": {
+        "reveal": "always"
+      }
+    }
+  ]
 }

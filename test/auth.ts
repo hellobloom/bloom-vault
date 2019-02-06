@@ -1,8 +1,8 @@
 import * as path from 'path'
 require('dotenv').config({path: path.join(__dirname, '../.env.debug')})
 import * as assert from 'assert'
-import fetch, { Response } from 'node-fetch'
-import { Client } from 'pg'
+import fetch, {Response} from 'node-fetch'
+import {Client} from 'pg'
 import {up, down} from '../migrations'
 import * as db from '../database'
 import Repo from '../src/repository'
@@ -23,7 +23,7 @@ describe('Auth', async () => {
     await up(db.mocha, false)
 
     privateKey = (await openpgp.generateKey({
-      userIds: [{ name: 'Jon Smith', email: 'jon@example.com' }],
+      userIds: [{name: 'Jon Smith', email: 'jon@example.com'}],
       curve: 'curve25519',
       // preferred symmetric cypher is aes256 for openPGP.js
     })).key
@@ -34,10 +34,13 @@ describe('Auth', async () => {
   })
 
   it('should return 400 on bad fingerprint format', async () => {
-    const badResponse = await fetch(`${url}/auth/request-token?fingerprint=${privateKey.getFingerprint() + 'A'}`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-    })
+    const badResponse = await fetch(
+      `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint() + 'A'}`,
+      {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+      }
+    )
 
     assert.equal(badResponse.status, 400)
   })
@@ -48,10 +51,13 @@ describe('Auth', async () => {
     let signed: openpgp.SignResult
 
     before(async () => {
-      response = await fetch(`${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-      })
+      response = await fetch(
+        `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}`,
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+        }
+      )
       body = await response.json()
       accessToken = body.token
 
@@ -142,7 +148,7 @@ describe('Auth', async () => {
 
     it('should return 401 if signature is invalid', async () => {
       const differentPrivateKey = (await openpgp.generateKey({
-        userIds: [{ name: 'Jon Smith', email: 'jon@example.com' }],
+        userIds: [{name: 'Jon Smith', email: 'jon@example.com'}],
         curve: 'curve25519',
       })).key
 
@@ -168,7 +174,7 @@ describe('Auth', async () => {
 
     it('should return 401 if fingerprint of key passed does not match token', async () => {
       const differentPrivateKey = (await openpgp.generateKey({
-        userIds: [{ name: 'Jon Smith', email: 'jon@example.com' }],
+        userIds: [{name: 'Jon Smith', email: 'jon@example.com'}],
         curve: 'curve25519',
       })).key
 
@@ -196,7 +202,7 @@ describe('Auth', async () => {
       const badResponse = await fetch(`${url}/data/me`, {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       })
 
@@ -237,10 +243,13 @@ describe('Auth', async () => {
 
       describe('after requesting another token', async () => {
         before(async () => {
-          response = await fetch(`${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-          })
+          response = await fetch(
+            `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}`,
+            {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+            }
+          )
           body = await response.json()
           accessToken = body.token
 
@@ -290,7 +299,7 @@ describe('Auth', async () => {
             const goodResponse = await fetch(`${url}/data/me`, {
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`,
+                Authorization: `Bearer ${accessToken}`,
               },
             })
 
@@ -301,7 +310,7 @@ describe('Auth', async () => {
             const badResponse = await fetch(`${url}/data/me`, {
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${uuid()}`,
+                Authorization: `Bearer ${uuid()}`,
               },
             })
 
@@ -311,8 +320,10 @@ describe('Auth', async () => {
           describe('after the token expires', async () => {
             before(async () => {
               await client.query(
-                `update access_token set validated_at = validated_at - interval '${Repo.tokenExpiration}' where uuid = $1;`,
-                [accessToken],
+                `update access_token set validated_at = validated_at - interval '${
+                  Repo.tokenExpiration
+                }' where uuid = $1;`,
+                [accessToken]
               )
             })
 
@@ -320,7 +331,7 @@ describe('Auth', async () => {
               const badResponse = await fetch(`${url}/data/me`, {
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${accessToken}`,
+                  Authorization: `Bearer ${accessToken}`,
                 },
               })
               assert.equal(badResponse.status, 401)

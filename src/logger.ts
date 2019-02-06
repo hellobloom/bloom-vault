@@ -1,4 +1,3 @@
-
 export async function persistError(message: string, stack: string) {
   try {
     console.error(message, stack)
