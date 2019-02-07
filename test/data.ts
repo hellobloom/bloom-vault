@@ -276,7 +276,11 @@ describe('Data', () => {
 
     it('cannot insert malformed cyphertext', async () => {
       const malformedData = 'ThisIsNotCyphertext'
-      const response = await postData(firstUser.accessToken, malformedData, firstUser.data.length)
+      const response = await postData(
+        firstUser.accessToken,
+        malformedData,
+        firstUser.data.length
+      )
       const body = await response.json()
       assert.equal(response.status, 400)
       assert.equal(body.error, 'bad cyphertext format')

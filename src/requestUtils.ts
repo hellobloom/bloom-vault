@@ -113,15 +113,21 @@ export function ipRateLimited(
 }
 
 export type OptionalCheckList<T> = {[P in keyof T]?: boolean}
+
 export type InversePromise<T> = T extends Promise<infer K> ? K : T
-export type Validator<T, P extends keyof T, R> = (
-  name: P,
-  value: T[P],
-  model: T
-) => Promise<R> | R
-export type Validators<T> = {[P in keyof T]: Validator<T, P, any>}
-export type Transformed<T, V extends Validators<T>> = {
-  [P in keyof T]: InversePromise<ReturnType<V[P]>>
+
+export type Validator<Model, Prop extends keyof Model, Return> = (
+  name: Prop,
+  value: Model[Prop],
+  model: Model
+) => Promise<Return> | Return
+
+export type ValidatorSet<Model> = {
+  [Prop in keyof Model]: Validator<Model, Prop, any>
+}
+
+export type ValidatedModel<Model, Validators extends ValidatorSet<Model>> = {
+  [Prop in keyof Model]: InversePromise<ReturnType<Validators[Prop]>>
 }
 
 export class ModelValidator<T> {
@@ -140,16 +146,16 @@ export class ModelValidator<T> {
     return validated === undefined ? value : validated
   }
 
-  public async validate<V extends Validators<T>>(
+  public async validate<V extends ValidatorSet<T>>(
     validators: V
-  ): Promise<Transformed<T, V>> {
+  ): Promise<ValidatedModel<T, V>> {
     for (const validator in validators) {
       this.model[validator as keyof T] = await this.validateProp(
         validator as keyof T,
         validators[validator]
       )
     }
-    return this.model as Transformed<T, V>
+    return this.model as ValidatedModel<T, V>
   }
 }
 
