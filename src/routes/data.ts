@@ -9,6 +9,8 @@ import {
   dataDeletionMessage,
   udefCoalesce,
   ipRateLimited,
+  noValidator,
+  noValidatorAuthenticatedHandler,
 } from '../requestUtils'
 import Repo from '../repository'
 import * as openpgp from 'openpgp'
@@ -18,22 +20,19 @@ export const dataRouter = (app: express.Application) => {
     '/data/me',
     ipRateLimited(60, 'me'),
     apiOnly,
-    authenticatedHandler(
-      async (req, res, next) => {},
-      async ({entity: {fingerprint}}) => {
-        const entity = await Repo.getMe(fingerprint)
-        const {keys} = await openpgp.key.read(entity.key)
-        return {
-          status: 200,
-          body: {
-            pgpKey: keys[0].armor(),
-            pgpKeyFingerprint: fingerprint.toString('hex').toUpperCase(),
-            dataCount: entity.data_count,
-            deletedCount: entity.deleted_count,
-          },
-        }
+    noValidatorAuthenticatedHandler(async ({entity: {fingerprint}}) => {
+      const entity = await Repo.getMe(fingerprint)
+      const {keys} = await openpgp.key.read(entity.key)
+      return {
+        status: 200,
+        body: {
+          pgpKey: keys[0].armor(),
+          pgpKeyFingerprint: fingerprint.toString('hex').toUpperCase(),
+          dataCount: entity.data_count,
+          deletedCount: entity.deleted_count,
+        },
       }
-    )
+    })
   )
 
   const getData = authenticatedHandler(

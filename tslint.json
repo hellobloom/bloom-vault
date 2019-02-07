@@ -21,7 +21,8 @@
     "max-classes-per-file": false,
     "forin": false,
     "trailing-comma": false,
-    "object-literal-key-quotes": false
+    "object-literal-key-quotes": false,
+    "variable-name": false
   },
   "rulesDirectory": []
 }
