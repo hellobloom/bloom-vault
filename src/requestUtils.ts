@@ -55,6 +55,14 @@ export function authenticatedHandler<T>(
   ]
 }
 
+export const noValidator = async (_req: Request, _res: Response) => {}
+
+export function noValidatorAuthenticatedHandler(
+  handler: (parameters: void & {entity: IEntity}) => Promise<IHandlerResult>
+) {
+  return authenticatedHandler(noValidator, handler)
+}
+
 export const apiOnly: RequestHandler = (req, res, next) => {
   if (req.header('Content-Type') === 'application/json') {
     next()

@@ -140,7 +140,7 @@ export const tokenRouter = (app: express.Application) => {
 
         return {
           status: 200,
-          body: {token: accessToken, expiresAt},
+          body: {expiresAt},
         }
       }
     )

@@ -1,6 +1,6 @@
 {
   "defaultSeverity": "error",
-  "extends": ["tslint:recommended"],
+  "extends": "tslint:recommended",
   "jsRules": {},
   "rules": {
     "quotemark": [true, "single", "jsx-double", "avoid-escape"],
@@ -23,7 +23,14 @@
     "trailing-comma": false,
     "object-literal-key-quotes": {
       "options": "as-needed"
-    }
+    },
+    "variable-name": [
+      true,
+      "ban-keywords",
+      "check-format",
+      "allow-leading-underscore",
+      "allow-pascal-case"
+    ]
   },
   "rulesDirectory": []
 }

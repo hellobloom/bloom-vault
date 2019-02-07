@@ -920,11 +920,26 @@ declare module 'openpgp' {
     }
   }
 
+  // Types derived from: https://github.com/openpgpjs/openpgpjs/blob/e2d19a7414290887aed8e40b054f678fb102f9db/src/openpgp.js#L452
   export function verify(options: {
-    message: message.Message.CleartextMessage
-    signature: signature.Signature
     publicKeys: key.Key[]
-  })
+    message: message.Message.CleartextMessage
+    streaming?: 'web' | 'node' | false
+    signature?: signature.Signature
+    date?: Date
+  }): Promise<{
+    data:
+      | String
+      | ReadableStream<String>
+      | Uint8Array
+      | ReadableStream<Uint8Array>
+      | NodeStream
+    signatures: {
+      keyid: Keyid
+      verified: Promise<boolean>
+      valid: boolean
+    }[]
+  }>
 
   export namespace key {
     export type EllipticCurveName =
