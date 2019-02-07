@@ -21,8 +21,16 @@
     "max-classes-per-file": false,
     "forin": false,
     "trailing-comma": false,
-    "object-literal-key-quotes": false,
-    "variable-name": false
+    "object-literal-key-quotes": {
+      "options": "as-needed"
+    },
+    "variable-name": [
+      true,
+      "ban-keywords",
+      "check-format",
+      "allow-leading-underscore",
+      "allow-pascal-case"
+    ]
   },
   "rulesDirectory": []
 }

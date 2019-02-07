@@ -62,7 +62,6 @@ console.log(`Local:  http://localhost:${port}/`)
 
 process.on('unhandledRejection', error => {
   if (error) {
-    console.log(error)
     persistError(error.message, error.stack)
   }
 })

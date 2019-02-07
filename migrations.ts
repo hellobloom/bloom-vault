@@ -56,12 +56,12 @@ const migrations: IMigration[] = [
       );
       `,
     down: `
-      drop table ip_call_count;
-      drop table access_token;
-      drop table deletions;
-      drop table data;
-      drop table entities;
-      drop domain pgp_fingerprint;
+      drop table if exists ip_call_count;
+      drop table  if exists access_token;
+      drop table if exists deletions;
+      drop table if exists data;
+      drop table if exists entities;
+      drop domain if exists pgp_fingerprint;
     `,
   },
 ]

@@ -174,7 +174,7 @@ describe('Data', () => {
       await client.query('delete from ip_call_count;')
     })
 
-    it('should hit a reate limit', () => {
+    it('should hit a rate limit', () => {
       assert.equal(response.status, 429)
     })
   })
@@ -272,6 +272,18 @@ describe('Data', () => {
       const body = await response.json()
       assert.equal(response.status, 400)
       assert.equal(body.error, 'id not in sequence')
+    })
+
+    it('cannot insert malformed cyphertext', async () => {
+      const malformedData = 'ThisIsNotCyphertext'
+      const response = await postData(
+        firstUser.accessToken,
+        malformedData,
+        firstUser.data.length
+      )
+      const body = await response.json()
+      assert.equal(response.status, 400)
+      assert.equal(body.error, 'bad cyphertext format')
     })
 
     it('should not let too few signatures be passed if passed', async () => {
