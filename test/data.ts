@@ -165,7 +165,7 @@ describe('Data', () => {
   describe('after spamming an endpoint', async () => {
     let response: Response
     before(async () => {
-      for (let i = 0; i < 60; i++) {
+      for (let i = 0; i < 65; i++) {
         response = await getMe(firstUser.accessToken)
       }
     })

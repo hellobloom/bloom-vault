@@ -24,8 +24,17 @@ const getPipelineStage = (): PipelineStages => {
   throw Error(`Please define PIPELINE_STAGE as one of: ${stagesStr}.`)
 }
 
+function getTokenExpiration() {
+  const variable = 'TOKEN_EXPIRATION_SECONDS'
+  const value = Number(environmentVariable(variable))
+  if (isNaN(value)) throw new Error(`invalid ${variable}`)
+  if (value <= 0) throw new Error(`${variable} must be > 0`)
+  return value
+}
+
 export const env = {
   nodeEnv: environmentVariable('NODE_ENV'),
   pipelineStage: getPipelineStage(),
   trustProxy: Boolean(environmentVariable('TRUST_PROXY')),
+  tokenExpirationSeconds: getTokenExpiration(),
 }

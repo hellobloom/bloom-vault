@@ -7,6 +7,7 @@ import {up, down} from '../migrations'
 import * as db from '../database'
 import Repo from '../src/repository'
 import * as openpgp from 'openpgp'
+import {env} from '../src/environment'
 const uuid = require('uuidv4')
 
 const url = 'http://localhost:3001'
@@ -320,10 +321,8 @@ describe('Auth', async () => {
           describe('after the token expires', async () => {
             before(async () => {
               await client.query(
-                `update access_token set validated_at = validated_at - interval '${
-                  Repo.tokenExpiration
-                }' where uuid = $1;`,
-                [accessToken]
+                `update access_token set validated_at = validated_at - ($2 || ' seconds')::interval where uuid = $1;`,
+                [accessToken, env.tokenExpirationSeconds]
               )
             })
 

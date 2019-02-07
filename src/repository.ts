@@ -18,8 +18,6 @@ export interface IEntity {
 }
 
 export default class Repo {
-  public static tokenExpiration = '1 day'
-
   public static async transaction<T>(callback: (client: PoolClient) => Promise<T>) {
     const client = await pool.connect()
     try {
@@ -234,11 +232,9 @@ export default class Repo {
         where 1=1
           and uuid = $1
           and validated_at is null
-        returning fingerprint, date_part('epoch',now() + interval '${
-          this.tokenExpiration
-        }')::int as expires_at;
+        returning fingerprint, date_part('epoch',now() + ($2 || ' seconds')::interval)::int as expires_at;
         `,
-        [token]
+        [token, env.tokenExpirationSeconds]
       )
 
       const row = result.rows[0] as {expires_at: number; fingerprint: Buffer}
@@ -266,11 +262,9 @@ export default class Repo {
       select e.fingerprint, e.key
       from access_token at
       join entities e on e.fingerprint = at.fingerprint
-      where uuid = $1 and validated_at between now() - interval '${
-        this.tokenExpiration
-      }' and now();
+      where uuid = $1 and validated_at between now() - ($2 || ' seconds')::interval and now();
     `,
-      [token]
+      [token, env.tokenExpirationSeconds]
     )
 
     if (result.rowCount !== 1) {
