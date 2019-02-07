@@ -931,7 +931,6 @@ declare module 'openpgp' {
     data:
       | String
       | ReadableStream<String>
-      | NodeStream
       | Uint8Array
       | ReadableStream<Uint8Array>
       | NodeStream
