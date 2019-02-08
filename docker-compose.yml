@@ -26,5 +26,14 @@ services:
     depends_on:
       - productiondb
 
+  backup:
+    env_file: .env
+    build: .
+    restart: always
+    volumes:
+      - productiondata:/dbdata
+      - ${BACKUP_LOCATION:-.}:/backup
+    command: bin/backup.sh
+
 volumes:
-    productiondata:
+  productiondata:
