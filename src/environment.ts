@@ -4,13 +4,15 @@ export enum PipelineStages {
   production = 'production',
 }
 
-function environmentVariable(name: string) {
+type OptionalIfTrue<B extends boolean, T> = B extends false ? T : T | undefined
+
+function environmentVariable<T extends boolean = false>(name: string, optional?: T) {
   const value = process.env[name]
 
-  if (!value) {
+  if ((value === undefined || value === '') && optional === false) {
     throw new Error(`Expected environment variable ${name}`)
   }
-  return value
+  return value as OptionalIfTrue<T, string>
 }
 
 const getPipelineStage = (): PipelineStages => {
@@ -37,4 +39,7 @@ export const env = {
   pipelineStage: getPipelineStage(),
   trustProxy: Boolean(environmentVariable('TRUST_PROXY')),
   tokenExpirationSeconds: getTokenExpiration(),
+  logUrl: environmentVariable('LOG_URL', true),
+  logUser: environmentVariable('LOG_USER', true),
+  logPassword: environmentVariable('LOG_PASSWORD', true),
 }
