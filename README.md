@@ -36,17 +36,49 @@ nano .env #edit your file
 chmod 600 .env
 ```
 
-then
+### if you are using the included postgres image
 
 ```
-docker-compose up --build -d && docker-compose logs -f
+docker-compose -f docker-compose.yml -f db-compose.yml up --build -d
 ```
 
-it will keep running after you're finished looking at the logs
+### else if you are using an external database
+
+make sure you set the following values in your .env file (see above)
+
+```
+POSTGRES_USER
+POSTGRES_HOST
+POSTGRES_PORT
+POSTGRES_DATABASE
+POSTGRES_REQUIRE_SSL
+```
+
+then start up the container
+
+```
+docker-compose up --build -d
+```
 
 ## Reseting (will delete ALL data)
 
 `docker-compose -f debug-compose.yml down --volumes`
+
+## Error Logging
+
+if you want errors to be posted as json to an external logging service set the following environement variables
+
+```
+LOG_URL
+LOG_USER
+LOG_PASSWORD
+```
+
+the logger will use basic http authentication with the username and password
+
+## Database Backups
+
+if you use the included postgres image and want to periodically back up the volume, set the `BACKUP_LOCATION` environment variable to a location on the host machine
 
 ## Gotchas
 

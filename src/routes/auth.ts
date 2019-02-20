@@ -1,14 +1,9 @@
 import * as express from 'express-serve-static-core'
-import {
-  apiOnly,
-  asyncHandler,
-  ClientFacingError,
-  ModelValidator,
-  ipRateLimited,
-} from '../requestUtils'
+import {apiOnly, asyncHandler, ipRateLimited} from '../requestUtils'
 import Repo from '../repository'
 import * as openpgp from 'openpgp'
 import regularExpressions from '../regularExpressions'
+import {ModelValidator, ClientFacingError} from '../utils'
 
 export const tokenRouter = (app: express.Application) => {
   app.post(

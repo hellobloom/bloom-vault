@@ -6,7 +6,7 @@ import {Client} from 'pg'
 import {up, down} from '../migrations'
 import * as db from '../database'
 import * as openpgp from 'openpgp'
-import {dataDeletionMessage, udefCoalesce} from '../src/requestUtils'
+import {dataDeletionMessage, udefCoalesce} from '../src/utils'
 
 const url = 'http://localhost:3001'
 

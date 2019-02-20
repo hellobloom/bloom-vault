@@ -2,7 +2,7 @@ import * as config from '../database'
 import {persistError} from './logger'
 import {Pool, PoolClient} from 'pg'
 import {env} from './environment'
-import {udefCoalesce} from './requestUtils'
+import {udefCoalesce} from './utils'
 
 const pool = new Pool(
   env.nodeEnv === 'production' ? config.production : config.development

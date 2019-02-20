@@ -2,18 +2,19 @@ import * as express from 'express-serve-static-core'
 import {
   apiOnly,
   authenticatedHandler,
-  ClientFacingError,
-  ModelValidator,
-  requiredNumber,
-  optionalNumber,
-  dataDeletionMessage,
-  udefCoalesce,
   ipRateLimited,
-  noValidator,
   noValidatorAuthenticatedHandler,
 } from '../requestUtils'
 import Repo from '../repository'
 import * as openpgp from 'openpgp'
+import {
+  ModelValidator,
+  requiredNumber,
+  optionalNumber,
+  ClientFacingError,
+  udefCoalesce,
+  dataDeletionMessage,
+} from '../utils'
 
 export const dataRouter = (app: express.Application) => {
   app.get(

@@ -8,7 +8,7 @@ import {persistError} from './src/logger'
 
 import {dataRouter} from './src/routes/data'
 import {tokenRouter as authRouter} from './src/routes/auth'
-import {ClientFacingError} from './src/requestUtils'
+import {ClientFacingError} from './src/utils'
 
 const helmet = require('helmet')
 
