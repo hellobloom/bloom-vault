@@ -1,3 +1,5 @@
+import {toBoolean} from './utils'
+
 export enum PipelineStages {
   development = 'development',
   staging = 'staging',
@@ -37,9 +39,10 @@ function getTokenExpiration() {
 export const env = {
   nodeEnv: environmentVariable('NODE_ENV'),
   pipelineStage: getPipelineStage(),
-  trustProxy: Boolean(environmentVariable('TRUST_PROXY')),
+  trustProxy: toBoolean(environmentVariable('TRUST_PROXY')),
   tokenExpirationSeconds: getTokenExpiration(),
   logUrl: environmentVariable('LOG_URL', true),
   logUser: environmentVariable('LOG_USER', true),
   logPassword: environmentVariable('LOG_PASSWORD', true),
+  disableRateLimiting: toBoolean(environmentVariable('DISABLE_RATE_LIMITING', true)),
 }

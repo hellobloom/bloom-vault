@@ -6,6 +6,7 @@ import {
 } from 'express-serve-static-core'
 import Repo, {IEntity} from './repository'
 import regularExpressions from './regularExpressions'
+import {env} from './environment'
 
 export interface IHandlerResult<T extends object = {}> {
   status: number
@@ -102,6 +103,8 @@ export function ipRateLimited(
 ): RequestHandler {
   return async (req, res, next) => {
     try {
+      const disable = env.disableRateLimiting
+      if (disable) return next()
       const count = await Repo.updateCallCount(req.ip, endpoint)
       if (count > maxPerMinute) {
         console.log('IP rate limited violation')

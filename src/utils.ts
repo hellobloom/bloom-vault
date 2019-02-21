@@ -108,3 +108,10 @@ export function optionalNumber(name: string, value?: any) {
 export function dataDeletionMessage(id: number) {
   return `delete data id ${id}`
 }
+
+export function toBoolean(value?: string) {
+  if (value === undefined || value === null) return false
+  if (['true', 'True', 'TRUE'].indexOf(value) !== -1) return true
+  if (Number(value) === 1) return true
+  return false
+}
