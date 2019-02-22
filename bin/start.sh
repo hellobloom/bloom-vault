@@ -1,2 +1,5 @@
 #!/bin/bash
-npm run migrate && npm run start
+source './bin/strict-mode.sh'
+source ./bin/set-env-secrets.sh
+npm run migrate
+npm run start

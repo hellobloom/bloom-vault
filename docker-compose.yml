@@ -8,7 +8,3 @@ services:
     restart: always
     ports:
       - 3001:3001
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD}
-      NODE_ENV: production
-      PIPELINE_STAGE: ${PIPELINE_STAGE:?PIPELINE_STAGE}

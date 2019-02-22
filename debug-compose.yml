@@ -10,8 +10,9 @@ services:
       - debugdata:/var/lib/postgresql/data
     ports:
       - "5433:5432"
-  
+
   debugvault:
+    env_file: .env.debug
     build: .
     restart: "no"
     ports:
@@ -19,7 +20,6 @@ services:
       - 9298:9298
     depends_on:
       - debugdb
-    env_file: .env.debug
     command: bin/debug.sh
     volumes:
       - ./build:/app/build
