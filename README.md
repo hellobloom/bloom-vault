@@ -39,7 +39,7 @@ chmod 600 .env
 ### if you are using the included postgres image
 
 ```
-docker-compose -f docker-compose.yml -f db-compose.yml up --build -d
+docker-compose -f docker-compose.yml -f docker-db.yml up --build -d
 ```
 
 ### else if you are using an external database
@@ -51,7 +51,6 @@ POSTGRES_USER
 POSTGRES_HOST
 POSTGRES_PORT
 POSTGRES_DATABASE
-POSTGRES_REQUIRE_SSL
 ```
 
 then start up the container
@@ -60,9 +59,17 @@ then start up the container
 docker-compose up --build -d
 ```
 
+#### to use a self signed cert for external postgres db
+
+copy the ca.crt to ./pg_ca.crt then
+
+```
+docker-compose -f docker-compose.yml -f docker-pg-ssl.yml up --build
+```
+
 ## Reseting (will delete ALL data)
 
-`docker-compose -f debug-compose.yml down --volumes`
+`docker-compose -f docker-debug.yml down --volumes`
 
 ## Error Logging
 

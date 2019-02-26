@@ -18,7 +18,7 @@ const sendLog = async (message: string, stack: string) => {
   let payload = {
     $app: 'vault',
     $type: 'event',
-    $body: JSON.stringify({message, stack}),
+    $body: JSON.stringify({message, stack, pipelineStage: env.pipelineStage}),
   }
   await fetch(env.logUrl!, {
     method: 'POST',

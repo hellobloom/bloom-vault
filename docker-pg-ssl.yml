@@ -1,0 +1,11 @@
+version: '3.3'
+
+services:
+
+  productionvault:
+    secrets:
+      - pg_ca
+
+secrets:
+  pg_ca:
+    file: ./pg_ca.crt

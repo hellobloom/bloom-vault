@@ -7,3 +7,4 @@ yarn-error.log*
 build
 .env
 vault_backup*
+pg_ca.crt

@@ -20,7 +20,7 @@ set_env_secrets() {
             fi
         done < "$secret_file_path"
     else
-        env_secret_debug "Secret file does not exist! $secret"
+        env_secret_debug "Secret file does not exist! ${ENV_SECRETS_DIR}/env"
     fi
 
     if [[ $debug = "true" ]]; then

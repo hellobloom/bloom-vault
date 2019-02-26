@@ -7,8 +7,7 @@ build/**/*
 .env
 .gitignore
 .git
-debug-compose.yml
-docker-compose.yml
+docker-*.yml
 Dockerfile
 README.md
 .env.debug

@@ -1,4 +1,7 @@
 import {udefCoalesce} from './src/utils'
+import * as fs from 'fs'
+
+const ca = '/run/secrets/pg_ca'
 
 export const production = {
   user: udefCoalesce(process.env.POSTGRES_USER, 'postgres'),
@@ -6,7 +9,7 @@ export const production = {
   host: udefCoalesce(process.env.POSTGRES_HOST, 'productiondb'),
   port: udefCoalesce(process.env.POSTGRES_PORT, 5432),
   database: udefCoalesce(process.env.POSTGRES_DATABASE, 'postgres'),
-  ssl: process.env.POSTGRES_REQUIRE_SSL ? {rejectUnauthorized: true} : undefined,
+  ssl: fs.existsSync(ca) ? {ca: fs.readFileSync(ca)} : undefined,
 }
 export const mocha = {
   user: 'postgres',
