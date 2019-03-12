@@ -11,7 +11,10 @@ type OptionalIfTrue<B extends boolean, T> = B extends false ? T : T | undefined
 function environmentVariable<T extends boolean = false>(name: string, optional?: T) {
   const value = process.env[name]
 
-  if ((value === undefined || value === '') && (optional === false || optional === undefined)) {
+  if (
+    (value === undefined || value === '') &&
+    (optional === false || optional === undefined)
+  ) {
     throw new Error(`Expected environment variable ${name}`)
   }
   return value as OptionalIfTrue<T, string>

@@ -15,7 +15,7 @@ export const mocha = {
   user: 'postgres',
   password: process.env.POSTGRES_PASSWORD,
   host: 'localhost',
-  port: 5433,
+  port: 5434,
   database: 'debug',
 }
 export const development = {
