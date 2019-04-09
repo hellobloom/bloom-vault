@@ -13,6 +13,7 @@ const migrations: IMigration[] = [
     name: 'initial',
     up: `
       CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+      CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
       create domain pgp_fingerprint as bytea constraint fingerprint_length check (octet_length(VALUE) = 20);
 
@@ -40,7 +41,7 @@ const migrations: IMigration[] = [
       );
 
       create table access_token (
-        uuid         uuid default uuid_generate_v4() primary key,
+        uuid         uuid default gen_random_uuid() primary key,
         fingerprint    pgp_fingerprint not null references entities,
         validated_at timestamp with time zone
       );
