@@ -48,4 +48,5 @@ export const env = {
   logUser: environmentVariable('LOG_USER', true),
   logPassword: environmentVariable('LOG_PASSWORD', true),
   disableRateLimiting: toBoolean(environmentVariable('DISABLE_RATE_LIMITING', true)),
+  adminPassword: environmentVariable('ADMIN_PASSWORD'),
 }

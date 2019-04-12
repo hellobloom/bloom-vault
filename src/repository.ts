@@ -3,6 +3,8 @@ import {persistError} from './logger'
 import {Pool, PoolClient} from 'pg'
 import {env} from './environment'
 import {udefCoalesce} from './utils'
+const uuid = require('uuidv4')
+
 
 const pool = new Pool(
   env.nodeEnv === 'production' ? config.production : config.development
@@ -204,24 +206,36 @@ export default class Repo {
     return result.rows[0]
   }
 
-  public static async createAccessToken(fingerprint: Buffer): Promise<string> {
-    await pool.query(
-      `
-      insert into entities
-      (fingerprint) select ($1::pgp_fingerprint)
-      where not exists (select 1 from entities where fingerprint = $1::pgp_fingerprint);
-    `,
-      [fingerprint]
-    )
+  public static async createAccessToken(fingerprint: Buffer, adminPassword: string) {
+    return this.transaction(async client => {
+      const created = await client.query(
+        `
+        insert into entities
+        (fingerprint) values ($1::pgp_fingerprint)
+        on conflict(fingerprint) do nothing
+        returning gen_random_uuid() as uuid;
+      `,
+        [fingerprint]
+      )
 
-    const token = await pool.query(
-      `
-      insert into access_token (fingerprint) values ($1) returning uuid;
-    `,
-      [fingerprint]
-    )
+      if(created.rows.length > 0 && adminPassword !== env.adminPassword) {
+        // only the admin can create entities
+        await client.query(`ROLLBACK;`)
+        // return fake uuid to prevent attackers from
+        // figuring out which keys exist in the database
+        return created.rows[0].uuid as string
+      }
 
-    return token.rows[0].uuid
+      const token = await client.query(
+        `
+        insert into access_token (fingerprint) values ($1) returning uuid;
+      `,
+        [fingerprint]
+      )
+
+      return token.rows[0].uuid as string
+    })
+
   }
 
   public static async validateAccessToken(token: string, key?: Buffer | Uint8Array) {
