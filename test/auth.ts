@@ -46,7 +46,7 @@ describe('Auth', async () => {
     assert.equal(badResponse.status, 400)
   })
 
-  describe('after requesting a token', async () => {
+  describe('after requesting a new token with no password', async () => {
     let response: Response
     let body: any
     let signed: openpgp.SignResult
@@ -54,6 +54,88 @@ describe('Auth', async () => {
     before(async () => {
       response = await fetch(
         `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}`,
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+        }
+      )
+      body = await response.json()
+      accessToken = body.token
+
+      signed = await openpgp.sign({
+        message: openpgp.cleartext.fromText(accessToken),
+        privateKeys: [privateKey],
+        detached: true,
+      })
+    })
+
+    it('should return OK', async () => {
+      assert.equal(response.status, 200)
+    })
+
+    it('should not be able to validate the fake token', async () => {
+      response = await fetch(`${url}/auth/validate-token`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          accessToken,
+          signature: signed.signature,
+          pgpKey: privateKey.toPublic().armor(),
+        }),
+      })
+      assert.equal(response.status, 401)
+    })
+  })
+
+  describe('after requesting a new token with the wrong password', async () => {
+    let response: Response
+    let body: any
+    let signed: openpgp.SignResult
+
+    before(async () => {
+      response = await fetch(
+        `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}&password=asdf`,
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+        }
+      )
+      body = await response.json()
+      accessToken = body.token
+
+      signed = await openpgp.sign({
+        message: openpgp.cleartext.fromText(accessToken),
+        privateKeys: [privateKey],
+        detached: true,
+      })
+    })
+
+    it('should return OK', async () => {
+      assert.equal(response.status, 200)
+    })
+
+    it('should not be able to validate the fake token', async () => {
+      response = await fetch(`${url}/auth/validate-token`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          accessToken,
+          signature: signed.signature,
+          pgpKey: privateKey.toPublic().armor(),
+        }),
+      })
+      assert.equal(response.status, 401)
+    })
+  })
+
+  describe('after requesting a token', async () => {
+    let response: Response
+    let body: any
+    let signed: openpgp.SignResult
+
+    before(async () => {
+      response = await fetch(
+        `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}&password=${env.adminPassword}`,
         {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},

@@ -14,7 +14,7 @@ export const tokenRouter = (app: express.Application) => {
     asyncHandler(
       async (req, res, next) => {
         const query = req.query as {fingerprint: string, password: string}
-        const validator = new ModelValidator(query)
+        const validator = new ModelValidator(query, {password: true})
 
         return validator.validate({
           fingerprint: async (name, value) => {
