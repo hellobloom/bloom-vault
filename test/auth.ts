@@ -135,7 +135,9 @@ describe('Auth', async () => {
 
     before(async () => {
       response = await fetch(
-        `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}&password=${env.adminPassword}`,
+        `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}&password=${
+          env.adminPassword
+        }`,
         {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},

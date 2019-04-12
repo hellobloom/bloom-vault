@@ -5,7 +5,6 @@ import {env} from './environment'
 import {udefCoalesce} from './utils'
 const uuid = require('uuidv4')
 
-
 const pool = new Pool(
   env.nodeEnv === 'production' ? config.production : config.development
 )
@@ -218,7 +217,7 @@ export default class Repo {
         [fingerprint]
       )
 
-      if(created.rows.length > 0 && adminPassword !== env.adminPassword) {
+      if (created.rows.length > 0 && adminPassword !== env.adminPassword) {
         // only the admin can create entities
         await client.query(`ROLLBACK;`)
         // return fake uuid to prevent attackers from
@@ -235,7 +234,6 @@ export default class Repo {
 
       return token.rows[0].uuid as string
     })
-
   }
 
   public static async validateAccessToken(token: string, key?: Buffer | Uint8Array) {

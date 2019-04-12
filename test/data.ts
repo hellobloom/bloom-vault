@@ -7,7 +7,7 @@ import {up, down} from '../migrations'
 import * as db from '../database'
 import * as openpgp from 'openpgp'
 import {dataDeletionMessage, udefCoalesce} from '../src/utils'
-import { env } from '../src/environment';
+import {env} from '../src/environment'
 
 const url = 'http://localhost:3001'
 
@@ -30,7 +30,9 @@ describe('Data', () => {
 
   async function requestToken(user: IUser) {
     const response = await fetch(
-      `${url}/auth/request-token?fingerprint=${user.key.getFingerprint()}&password=${env.adminPassword}`,
+      `${url}/auth/request-token?fingerprint=${user.key.getFingerprint()}&password=${
+        env.adminPassword
+      }`,
       {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},

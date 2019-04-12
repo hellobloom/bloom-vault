@@ -4,7 +4,7 @@ import Repo from '../repository'
 import * as openpgp from 'openpgp'
 import regularExpressions from '../regularExpressions'
 import {ModelValidator, ClientFacingError} from '../utils'
-import { type } from 'os';
+import {type} from 'os'
 
 export const tokenRouter = (app: express.Application) => {
   app.post(
@@ -13,7 +13,7 @@ export const tokenRouter = (app: express.Application) => {
     apiOnly,
     asyncHandler(
       async (req, res, next) => {
-        const query = req.query as {fingerprint: string, password: string}
+        const query = req.query as {fingerprint: string; password: string}
         const validator = new ModelValidator(query, {password: true})
 
         return validator.validate({
@@ -29,11 +29,11 @@ export const tokenRouter = (app: express.Application) => {
             return value
           },
           password: async (name, value) => {
-            if(value !== undefined && typeof value !== 'string') {
+            if (value !== undefined && typeof value !== 'string') {
               throw new ClientFacingError(`bad ${name} format`)
             }
             return value
-          }
+          },
         })
       },
 
@@ -41,7 +41,10 @@ export const tokenRouter = (app: express.Application) => {
         return {
           status: 200,
           body: {
-            token: await Repo.createAccessToken(Buffer.from(fingerprint, 'hex'), password),
+            token: await Repo.createAccessToken(
+              Buffer.from(fingerprint, 'hex'),
+              password
+            ),
           },
         }
       }
