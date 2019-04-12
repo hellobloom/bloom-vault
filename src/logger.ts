@@ -15,7 +15,7 @@ export async function persistError(message: string, stack: string) {
 }
 
 const sendLog = async (message: string, stack: string) => {
-  let payload = {
+  const payload = {
     $app: 'vault',
     $type: 'event',
     $body: JSON.stringify({message, stack, pipelineStage: env.pipelineStage}),
