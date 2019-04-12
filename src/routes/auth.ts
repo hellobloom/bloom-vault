@@ -4,7 +4,6 @@ import Repo from '../repository'
 import * as openpgp from 'openpgp'
 import regularExpressions from '../regularExpressions'
 import {ModelValidator, ClientFacingError} from '../utils'
-import {type} from 'os'
 
 export const tokenRouter = (app: express.Application) => {
   app.post(

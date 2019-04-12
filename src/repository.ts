@@ -3,7 +3,6 @@ import {persistError} from './logger'
 import {Pool, PoolClient} from 'pg'
 import {env} from './environment'
 import {udefCoalesce} from './utils'
-const uuid = require('uuidv4')
 
 const pool = new Pool(
   env.nodeEnv === 'production' ? config.production : config.development

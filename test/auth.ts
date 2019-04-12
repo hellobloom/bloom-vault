@@ -8,6 +8,7 @@ import * as db from '../database'
 import Repo from '../src/repository'
 import * as openpgp from 'openpgp'
 import {env} from '../src/environment'
+const uuid = require('uuidv4')
 
 const url = 'http://localhost:3001'
 
