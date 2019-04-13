@@ -67,6 +67,14 @@ export const apiOnly: RequestHandler = (req, res, next) => {
   }
 }
 
+export const adminOnly: RequestHandler = (req, res, next) => {
+  if (req.query.password === env.adminPassword()) {
+    next()
+  } else {
+    res.status(401).end()
+  }
+}
+
 type AuthenticatedRequest = Request & {entity: IEntity}
 
 export const authorized: RequestHandler = async (
@@ -103,7 +111,7 @@ export function ipRateLimited(
 ): RequestHandler {
   return async (req, res, next) => {
     try {
-      const disable = env.disableRateLimiting
+      const disable = env.disableRateLimiting()
       if (disable) return next()
       const count = await Repo.updateCallCount(req.ip, endpoint)
       if (count > maxPerMinute) {

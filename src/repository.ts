@@ -5,7 +5,7 @@ import {env} from './environment'
 import {udefCoalesce} from './utils'
 
 const pool = new Pool(
-  env.nodeEnv === 'production' ? config.production : config.development
+  env.nodeEnv() === 'production' ? config.production : config.development
 )
 
 pool.on('error', (err, client) => {
@@ -216,7 +216,11 @@ export default class Repo {
         [fingerprint]
       )
 
-      if (created.rows.length > 0 && adminPassword !== env.adminPassword) {
+      if (
+        created.rows.length > 0 &&
+        adminPassword !== env.adminPassword() &&
+        !env.allowAnonymous()
+      ) {
         // only the admin can create entities
         await client.query(`ROLLBACK;`)
         // return fake uuid to prevent attackers from
@@ -245,7 +249,7 @@ export default class Repo {
           and validated_at is null
         returning fingerprint, date_part('epoch',now() + ($2 || ' seconds')::interval)::int as expires_at;
         `,
-        [token, env.tokenExpirationSeconds]
+        [token, env.tokenExpirationSeconds()]
       )
 
       const row = result.rows[0] as {expires_at: number; fingerprint: Buffer}
@@ -275,7 +279,7 @@ export default class Repo {
       join entities e on e.fingerprint = at.fingerprint
       where uuid = $1 and validated_at between now() - ($2 || ' seconds')::interval and now();
     `,
-      [token, env.tokenExpirationSeconds]
+      [token, env.tokenExpirationSeconds()]
     )
 
     if (result.rowCount !== 1) {

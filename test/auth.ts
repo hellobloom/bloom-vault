@@ -34,6 +34,78 @@ describe('Auth', async () => {
     await client.end()
   })
 
+  describe('after requesting a new token with no password but ALLOW_ANAYMOUS set to true', async () => {
+    let response: Response
+    let body: any
+    let signed: openpgp.SignResult
+
+    before(async () => {
+      await fetch(
+        `${url}/debug/set-env/ALLOW_ANONYMOUS/true?password=${env.adminPassword()}`,
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+        }
+      )
+
+      response = await fetch(
+        `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}`,
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+        }
+      )
+      body = await response.json()
+      accessToken = body.token
+
+      signed = await openpgp.sign({
+        message: openpgp.cleartext.fromText(accessToken),
+        privateKeys: [privateKey],
+        detached: true,
+      })
+    })
+
+    after(async () => {
+      await fetch(
+        `${url}/debug/set-env/ALLOW_ANONYMOUS/false?password=${env.adminPassword()}`,
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+        }
+      )
+      const fingerprint = Buffer.from(privateKey.getFingerprint(), 'hex')
+      await client.query(
+        `
+        delete from access_token where fingerprint = $1;
+      `,
+        [fingerprint]
+      )
+      await client.query(
+        `
+        delete from entities where fingerprint = $1;
+      `,
+        [fingerprint]
+      )
+    })
+
+    it('should return OK', async () => {
+      assert.equal(response.status, 200)
+    })
+
+    it('should be able to validate the token', async () => {
+      response = await fetch(`${url}/auth/validate-token`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          accessToken,
+          signature: signed.signature,
+          pgpKey: privateKey.toPublic().armor(),
+        }),
+      })
+      assert.equal(response.status, 200)
+    })
+  })
+
   it('should return 400 on bad fingerprint format', async () => {
     const badResponse = await fetch(
       `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint() + 'A'}`,
@@ -85,6 +157,43 @@ describe('Auth', async () => {
       })
       assert.equal(response.status, 401)
     })
+
+    describe('after requesting a new token again with the same key', async () => {
+      before(async () => {
+        response = await fetch(
+          `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}`,
+          {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+          }
+        )
+        body = await response.json()
+        accessToken = body.token
+
+        signed = await openpgp.sign({
+          message: openpgp.cleartext.fromText(accessToken),
+          privateKeys: [privateKey],
+          detached: true,
+        })
+      })
+
+      it('should return OK', async () => {
+        assert.equal(response.status, 200)
+      })
+
+      it('should not be able to validate the fake token', async () => {
+        response = await fetch(`${url}/auth/validate-token`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            accessToken,
+            signature: signed.signature,
+            pgpKey: privateKey.toPublic().armor(),
+          }),
+        })
+        assert.equal(response.status, 401)
+      })
+    })
   })
 
   describe('after requesting a new token with the wrong password', async () => {
@@ -135,9 +244,7 @@ describe('Auth', async () => {
 
     before(async () => {
       response = await fetch(
-        `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}&password=${
-          env.adminPassword
-        }`,
+        `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}&password=${env.adminPassword()}`,
         {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -406,7 +513,7 @@ describe('Auth', async () => {
             before(async () => {
               await client.query(
                 `update access_token set validated_at = validated_at - ($2 || ' seconds')::interval where uuid = $1;`,
-                [accessToken, env.tokenExpirationSeconds]
+                [accessToken, env.tokenExpirationSeconds()]
               )
             })
 

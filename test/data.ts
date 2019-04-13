@@ -30,9 +30,7 @@ describe('Data', () => {
 
   async function requestToken(user: IUser) {
     const response = await fetch(
-      `${url}/auth/request-token?fingerprint=${user.key.getFingerprint()}&password=${
-        env.adminPassword
-      }`,
+      `${url}/auth/request-token?fingerprint=${user.key.getFingerprint()}&password=${env.adminPassword()}`,
       {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
