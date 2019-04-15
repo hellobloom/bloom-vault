@@ -187,10 +187,10 @@ export default class Repo {
 
   public static async getEntity(
     token: string
-  ): Promise<{key: Buffer; fingerprint: Buffer} | null> {
+  ): Promise<{key: Buffer; fingerprint: Buffer; blacklisted: boolean} | null> {
     const result = await pool.query(
       `
-      select key, e.fingerprint
+      select key, e.fingerprint, e.blacklisted
       from entities e
       join access_token a on e.fingerprint = a.fingerprint
       where a.uuid = $1;
@@ -204,7 +204,7 @@ export default class Repo {
     return result.rows[0]
   }
 
-  public static async createAccessToken(fingerprint: Buffer, adminPassword: string) {
+  public static async createAccessToken(fingerprint: Buffer, isAdmin: boolean) {
     return this.transaction(async client => {
       const created = await client.query(
         `
@@ -216,11 +216,7 @@ export default class Repo {
         [fingerprint]
       )
 
-      if (
-        created.rows.length > 0 &&
-        adminPassword !== env.adminPassword() &&
-        !env.allowAnonymous()
-      ) {
+      if (created.rows.length > 0 && !isAdmin && !env.allowAnonymous()) {
         // only the admin can create entities
         await client.query(`ROLLBACK;`)
         // return fake uuid to prevent attackers from
@@ -277,7 +273,10 @@ export default class Repo {
       select e.fingerprint, e.key
       from access_token at
       join entities e on e.fingerprint = at.fingerprint
-      where uuid = $1 and validated_at between now() - ($2 || ' seconds')::interval and now();
+      where 1=1
+        and uuid = $1
+        and validated_at between now() - ($2 || ' seconds')::interval and now()
+        and e.blacklisted = false;
     `,
       [token, env.tokenExpirationSeconds()]
     )
@@ -310,5 +309,27 @@ export default class Repo {
     )
 
     return result.rows[0].count as number
+  }
+
+  public static async addBlacklist(fingerprint: Buffer) {
+    return pool.query(
+      `
+      insert into entities
+      (fingerprint, blacklisted) values ($1::pgp_fingerprint, true)
+      on conflict(fingerprint) do update set blacklisted = true;
+    `,
+      [fingerprint]
+    )
+  }
+
+  public static async removeBlacklist(fingerprint: Buffer) {
+    return pool.query(
+      `
+      update entities
+      set blacklisted = false
+      where fingerprint = $1::pgp_fingerprint;
+    `,
+      [fingerprint]
+    )
   }
 }

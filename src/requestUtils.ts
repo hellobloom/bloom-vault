@@ -7,6 +7,7 @@ import {
 import Repo, {IEntity} from './repository'
 import regularExpressions from './regularExpressions'
 import {env} from './environment'
+import {ClientFacingError} from './utils'
 
 export interface IHandlerResult<T extends object = {}> {
   status: number
@@ -58,6 +59,18 @@ export function noValidatorAuthenticatedHandler(
   return authenticatedHandler(noValidator, handler)
 }
 
+export async function fingerprintValidator(name: string, fingerprint: string) {
+  const fingerprintRegExps = regularExpressions.auth.fingerprint
+  fingerprint = fingerprint.replace(fingerprintRegExps.hyphen, '')
+  fingerprint = fingerprint.replace(fingerprintRegExps.colon, '')
+  fingerprint = fingerprint.replace('0x', '')
+  const match = fingerprintRegExps.chars.exec(fingerprint)
+  if (!match) {
+    throw new ClientFacingError(`bad ${name} format`)
+  }
+  return fingerprint
+}
+
 export const apiOnly: RequestHandler = (req, res, next) => {
   if (req.header('Content-Type') === 'application/json') {
     next()
@@ -68,11 +81,15 @@ export const apiOnly: RequestHandler = (req, res, next) => {
 }
 
 export const adminOnly: RequestHandler = (req, res, next) => {
-  if (req.query.password === env.adminPassword()) {
+  if (isAdminPassword(req.query.password)) {
     next()
   } else {
     res.status(401).end()
   }
+}
+
+export const isAdminPassword = (password: string) => {
+  return password === env.adminPassword()
 }
 
 type AuthenticatedRequest = Request & {entity: IEntity}

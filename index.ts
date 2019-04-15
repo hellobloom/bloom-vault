@@ -9,7 +9,7 @@ import {persistError} from './src/logger'
 import {dataRouter} from './src/routes/data'
 import {tokenRouter as authRouter} from './src/routes/auth'
 import {ClientFacingError} from './src/utils'
-import {debugRouter} from './src/routes/debug'
+import {apiOnly, adminOnly} from './src/requestUtils'
 
 const helmet = require('helmet')
 
@@ -41,7 +41,10 @@ authRouter(app)
 dataRouter(app)
 
 if (env.pipelineStage() === PipelineStages.development) {
-  debugRouter(app)
+  app.post('/debug/set-env/:key/:value', apiOnly, adminOnly, (req, res) => {
+    process.env[req.params.key] = req.params.value
+    return res.status(200).end()
+  })
 }
 
 app.get('*', (req, res, next) => res.status(404).end())

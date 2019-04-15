@@ -21,7 +21,8 @@ const migrations: IMigration[] = [
         fingerprint pgp_fingerprint primary key,
         key bytea unique,
         data_count integer not null default 0,
-        deleted_count integer not null default 0
+        deleted_count integer not null default 0,
+        blacklisted boolean not null default false
       );
 
       create table data (

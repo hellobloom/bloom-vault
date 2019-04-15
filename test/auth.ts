@@ -5,7 +5,6 @@ import fetch, {Response} from 'node-fetch'
 import {Client} from 'pg'
 import {up, down} from '../migrations'
 import * as db from '../database'
-import Repo from '../src/repository'
 import * as openpgp from 'openpgp'
 import {env} from '../src/environment'
 const uuid = require('uuidv4')
@@ -116,6 +115,28 @@ describe('Auth', async () => {
     )
 
     assert.equal(badResponse.status, 400)
+  })
+
+  it('should not let somebody add/remove a blacklist without a valid admin password', async () => {
+    let badResponse = await fetch(
+      `${url}/auth/blacklist?fingerprint=${privateKey.getFingerprint()}&password=asdfasdf`,
+      {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+      }
+    )
+
+    assert.equal(badResponse.status, 401)
+
+    badResponse = await fetch(
+      `${url}/auth/blacklist?fingerprint=${privateKey.getFingerprint()}&password=asdfasdf`,
+      {
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'},
+      }
+    )
+
+    assert.equal(badResponse.status, 401)
   })
 
   describe('after requesting a new token with no password', async () => {
@@ -507,6 +528,54 @@ describe('Auth', async () => {
             })
 
             assert.equal(badResponse.status, 401)
+          })
+
+          describe('after blacklisting the fingerprint', async () => {
+            before(async () => {
+              await fetch(
+                `${url}/auth/blacklist?fingerprint=${privateKey.getFingerprint()}&password=${env.adminPassword()}`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                }
+              )
+            })
+
+            it('should not be able to access a protected endpoint with blacklisted token', async () => {
+              const badResponse = await fetch(`${url}/data/me`, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${accessToken}`,
+                },
+              })
+              assert.equal(badResponse.status, 401)
+            })
+
+            describe('after unblacklisting the fingerprint', async () => {
+              before(async () => {
+                await fetch(
+                  `${url}/auth/blacklist?fingerprint=${privateKey.getFingerprint()}&password=${env.adminPassword()}`,
+                  {
+                    method: 'DELETE',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                  }
+                )
+              })
+
+              it('should be able to access a protected endpoint with unblacklisted token', async () => {
+                const badResponse = await fetch(`${url}/data/me`, {
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${accessToken}`,
+                  },
+                })
+                assert.equal(badResponse.status, 200)
+              })
+            })
           })
 
           describe('after the token expires', async () => {
