@@ -49,6 +49,5 @@ export const env = {
   logPassword: () => environmentVariable('LOG_PASSWORD', true),
   disableRateLimiting: () =>
     toBoolean(environmentVariable('DISABLE_RATE_LIMITING', true)),
-  adminPassword: () => environmentVariable('ADMIN_PASSWORD'),
   allowAnonymous: () => toBoolean(environmentVariable('ALLOW_ANONYMOUS')),
 }

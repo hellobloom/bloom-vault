@@ -109,7 +109,8 @@ export function dataDeletionMessage(id: number) {
   return `delete data id ${id}`
 }
 
-export function toBoolean(value?: string) {
+export function toBoolean(value?: string | boolean) {
+  if (typeof value === 'boolean') return value
   if (value === undefined || value === null) return false
   if (['true', 'True', 'TRUE'].indexOf(value) !== -1) return true
   if (Number(value) === 1) return true

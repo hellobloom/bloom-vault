@@ -3,14 +3,15 @@ import {
   apiOnly,
   asyncHandler,
   ipRateLimited,
-  adminOnly,
   fingerprintValidator,
-  isAdminPassword,
+  adminOnlyHandler,
+  RequestValidator,
+  createRequestValidator,
 } from '../requestUtils'
 import Repo from '../repository'
 import * as openpgp from 'openpgp'
 import regularExpressions from '../regularExpressions'
-import {ModelValidator, ClientFacingError} from '../utils'
+import {ModelValidator, ClientFacingError, toBoolean, Validator} from '../utils'
 
 export const tokenRouter = (app: express.Application) => {
   app.post(
@@ -19,22 +20,22 @@ export const tokenRouter = (app: express.Application) => {
     apiOnly,
     asyncHandler(
       async (req, res, next) => {
-        const query = req.query as {fingerprint: string; password: string}
-        const validator = new ModelValidator(query, {password: true})
+        const query = req.query as {fingerprint: string; initialize: boolean}
+        const validator = new ModelValidator(query, {initialize: true})
 
         return validator.validate({
           fingerprint: fingerprintValidator,
-          password: (name, password) => isAdminPassword(password),
+          initialize: (name, value) => toBoolean(value),
         })
       },
 
-      async ({fingerprint, password: isAdmin}) => {
+      async ({fingerprint, initialize}) => {
         return {
           status: 200,
           body: {
             token: await Repo.createAccessToken(
               Buffer.from(fingerprint, 'hex'),
-              isAdmin
+              initialize
             ),
           },
         }
@@ -146,51 +147,72 @@ export const tokenRouter = (app: express.Application) => {
     )
   )
 
+  const parseFingerprint = createRequestValidator(async (req, res, next) => {
+    const query = req.query as {fingerprint: string}
+    const validator = new ModelValidator(query)
+
+    return validator.validate({
+      fingerprint: fingerprintValidator,
+    })
+  })
+
   app.post(
     '/auth/blacklist',
     apiOnly,
-    adminOnly,
-    asyncHandler(
-      async (req, res, next) => {
-        const query = req.query as {fingerprint: string}
-        const validator = new ModelValidator(query)
-
-        return validator.validate({
-          fingerprint: fingerprintValidator,
-        })
-      },
-
-      async ({fingerprint}) => {
-        await Repo.addBlacklist(Buffer.from(fingerprint, 'hex'))
-        return {
-          status: 200,
-          body: {},
-        }
+    adminOnlyHandler(parseFingerprint, async ({fingerprint}) => {
+      await Repo.addBlacklist(Buffer.from(fingerprint, 'hex'))
+      return {
+        status: 200,
+        body: {},
       }
-    )
+    })
   )
 
   app.delete(
     '/auth/blacklist',
     apiOnly,
-    adminOnly,
-    asyncHandler(
-      async (req, res, next) => {
-        const query = req.query as {fingerprint: string}
-        const validator = new ModelValidator(query)
-
-        return validator.validate({
-          fingerprint: fingerprintValidator,
-        })
-      },
-
-      async ({fingerprint}) => {
-        await Repo.removeBlacklist(Buffer.from(fingerprint, 'hex'))
-        return {
-          status: 200,
-          body: {},
-        }
+    adminOnlyHandler(parseFingerprint, async ({fingerprint}) => {
+      await Repo.removeBlacklist(Buffer.from(fingerprint, 'hex'))
+      return {
+        status: 200,
+        body: {},
       }
-    )
+    })
+  )
+
+  app.post(
+    '/auth/admin',
+    apiOnly,
+    adminOnlyHandler(parseFingerprint, async ({fingerprint}) => {
+      await Repo.addAdmin(Buffer.from(fingerprint, 'hex'))
+      return {
+        status: 200,
+        body: {},
+      }
+    })
+  )
+
+  app.delete(
+    '/auth/admin',
+    apiOnly,
+    adminOnlyHandler(parseFingerprint, async ({fingerprint}) => {
+      await Repo.removeAdmin(Buffer.from(fingerprint, 'hex'))
+      return {
+        status: 200,
+        body: {},
+      }
+    })
+  )
+
+  app.post(
+    '/auth/entity',
+    apiOnly,
+    adminOnlyHandler(parseFingerprint, async ({fingerprint}) => {
+      await Repo.addEntity(Buffer.from(fingerprint, 'hex'))
+      return {
+        status: 200,
+        body: {},
+      }
+    })
   )
 }

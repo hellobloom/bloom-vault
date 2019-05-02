@@ -1,6 +1,6 @@
 import * as config from '../database'
 import {persistError} from './logger'
-import {Pool, PoolClient} from 'pg'
+import {Pool, PoolClient, ClientBase} from 'pg'
 import {env} from './environment'
 import {udefCoalesce} from './utils'
 
@@ -30,6 +30,26 @@ export default class Repo {
       throw e
     } finally {
       client.release()
+    }
+  }
+
+  public static async query<T>(
+    callback: (client: PoolClient) => Promise<T>,
+    client?: PoolClient
+  ) {
+    let newClient = false
+    if (client === null || client === undefined) {
+      client = await pool.connect()
+      newClient = true
+    }
+
+    try {
+      const result = await callback(client)
+      return result
+    } finally {
+      if (newClient) {
+        client.release()
+      }
     }
   }
 
@@ -204,8 +224,22 @@ export default class Repo {
     return result.rows[0]
   }
 
-  public static async createAccessToken(fingerprint: Buffer, isAdmin: boolean) {
+  public static async createAccessToken(
+    fingerprint: Buffer,
+    initialize: boolean = false
+  ) {
     return this.transaction(async client => {
+      if (initialize === true) {
+        await client.query(
+          `
+          insert into entities
+          (fingerprint, admin) select $1::pgp_fingerprint, true
+          where (select count(*) from entities) = 0
+        `,
+          [fingerprint]
+        )
+      }
+
       const created = await client.query(
         `
         insert into entities
@@ -216,8 +250,9 @@ export default class Repo {
         [fingerprint]
       )
 
-      if (created.rows.length > 0 && !isAdmin && !env.allowAnonymous()) {
-        // only the admin can create entities
+      const allowAnonymous = env.allowAnonymous()
+
+      if (created.rows.length > 0 && !allowAnonymous) {
         await client.query(`ROLLBACK;`)
         // return fake uuid to prevent attackers from
         // figuring out which keys exist in the database
@@ -331,5 +366,56 @@ export default class Repo {
     `,
       [fingerprint]
     )
+  }
+
+  public static async addAdmin(fingerprint: Buffer) {
+    return pool.query(
+      `
+      insert into entities
+      (fingerprint, admin) values ($1::pgp_fingerprint, true)
+      on conflict(fingerprint) do update set admin = true;
+    `,
+      [fingerprint]
+    )
+  }
+
+  public static async removeAdmin(fingerprint: Buffer) {
+    return pool.query(
+      `
+      update entities
+      set admin = false
+      where fingerprint = $1::pgp_fingerprint;
+    `,
+      [fingerprint]
+    )
+  }
+
+  public static async addEntity(fingerprint: Buffer) {
+    return pool.query(
+      `
+      insert into entities
+      (fingerprint) values ($1::pgp_fingerprint)
+      on conflict(fingerprint) do nothing;
+    `,
+      [fingerprint]
+    )
+  }
+
+  public static async isAdmin(
+    fingerprint: Buffer,
+    client?: PoolClient
+  ): Promise<boolean> {
+    const result = await this.query(
+      async c =>
+        c.query(
+          `
+        select 1 from entities
+        where fingerprint = $1::pgp_fingerprint and admin = true;
+      `,
+          [fingerprint]
+        ),
+      client
+    )
+    return result.rows.length === 1
   }
 }

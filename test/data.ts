@@ -28,9 +28,9 @@ describe('Data', () => {
   let firstUser: IUser
   let secondUser: IUser
 
-  async function requestToken(user: IUser) {
+  async function requestToken(user: IUser, initialize: boolean = false) {
     const response = await fetch(
-      `${url}/auth/request-token?fingerprint=${user.key.getFingerprint()}&password=${env.adminPassword()}`,
+      `${url}/auth/request-token?fingerprint=${user.key.getFingerprint()}&initialize=${initialize}`,
       {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -141,10 +141,27 @@ describe('Data', () => {
 
     users = [firstUser, secondUser]
 
-    for (const user of users) {
-      await requestToken(user)
-      await validateToken(user)
-    }
+    await requestToken(firstUser, true)
+    await validateToken(firstUser)
+
+    let response = await fetch(`${url}/debug/set-env/ALLOW_ANONYMOUS/true`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${firstUser.accessToken}`,
+      },
+    })
+
+    await requestToken(secondUser)
+    await validateToken(secondUser)
+
+    response = await fetch(`${url}/debug/set-env/ALLOW_ANONYMOUS/false`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${firstUser.accessToken}`,
+      },
+    })
   })
 
   after(async () => {

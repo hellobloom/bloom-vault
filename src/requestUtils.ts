@@ -14,8 +14,24 @@ export interface IHandlerResult<T extends object = {}> {
   body: T
 }
 
+export type RequestValidator<T> = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => Promise<T>
+export type AuthenticatedRequestValidator<T> = (
+  req: Request & {entity: IEntity},
+  res: Response,
+  next: NextFunction
+) => Promise<T>
+
+// this helps typescript infer the types
+export function createRequestValidator<T>(validator: RequestValidator<T>) {
+  return validator
+}
+
 export function asyncHandler<T>(
-  validator: (req: Request, res: Response, next: NextFunction) => Promise<T>,
+  validator: RequestValidator<T>,
   handler: (parameters: T) => Promise<IHandlerResult>
 ) {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -30,11 +46,7 @@ export function asyncHandler<T>(
 }
 
 export function authenticatedHandler<T>(
-  validator: (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-  ) => Promise<T>,
+  validator: AuthenticatedRequestValidator<T>,
   handler: (parameters: T & {entity: IEntity}) => Promise<IHandlerResult>
 ) {
   return [
@@ -49,6 +61,18 @@ export function authenticatedHandler<T>(
       }
     },
   ]
+}
+
+export function adminOnlyHandler<T>(
+  validator: RequestValidator<T>,
+  handler: (parameters: T & {entity: IEntity}) => Promise<IHandlerResult>
+) {
+  return authenticatedHandler(validator, async params => {
+    if (!(await Repo.isAdmin(params.entity.fingerprint))) {
+      throw new ClientFacingError('unauthorized', 401)
+    }
+    return handler(params)
+  })
 }
 
 export const noValidator = async (_req: Request, _res: Response) => {}
@@ -78,18 +102,6 @@ export const apiOnly: RequestHandler = (req, res, next) => {
     // 415 = Unsupported media type
     res.status(415).end()
   }
-}
-
-export const adminOnly: RequestHandler = (req, res, next) => {
-  if (isAdminPassword(req.query.password)) {
-    next()
-  } else {
-    res.status(401).end()
-  }
-}
-
-export const isAdminPassword = (password: string) => {
-  return password === env.adminPassword()
 }
 
 type AuthenticatedRequest = Request & {entity: IEntity}
