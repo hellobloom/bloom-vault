@@ -1,11 +1,11 @@
 import * as config from '../database'
 import {persistError} from './logger'
-import {Pool, PoolClient} from 'pg'
+import {Pool, PoolClient, ClientBase} from 'pg'
 import {env} from './environment'
 import {udefCoalesce} from './utils'
 
 const pool = new Pool(
-  env.nodeEnv === 'production' ? config.production : config.development
+  env.nodeEnv() === 'production' ? config.production : config.development
 )
 
 pool.on('error', (err, client) => {
@@ -30,6 +30,26 @@ export default class Repo {
       throw e
     } finally {
       client.release()
+    }
+  }
+
+  public static async query<T>(
+    callback: (client: PoolClient) => Promise<T>,
+    client?: PoolClient
+  ) {
+    let newClient = false
+    if (client === null || client === undefined) {
+      client = await pool.connect()
+      newClient = true
+    }
+
+    try {
+      const result = await callback(client)
+      return result
+    } finally {
+      if (newClient) {
+        client.release()
+      }
     }
   }
 
@@ -83,39 +103,42 @@ export default class Repo {
     signatures: Buffer[] | Uint8Array[]
   ) {
     return this.transaction(async client => {
+
+      const newDeletions = await client.query(
+        `update data set cyphertext = null where fingerprint = $1::pgp_fingerprint and cyphertext is not null and id in ${this.in(
+          ids.length,
+          2
+        )} returning id;`,
+        [fingerprint, ...ids]
+      )
+
       const newCount = await client.query(
         `
           update entities set deleted_count = deleted_count + $2
           where fingerprint = $1::pgp_fingerprint
           returning deleted_count, data_count;`,
-        [fingerprint, ids.length]
+        [fingerprint, newDeletions.rowCount]
       )
 
-      const query = `
-        insert into deletions
-        (fingerprint,           id,        data_id,   signature) values ${this.values(
-          ['pgp_fingerprint', 'integer', 'integer', 'bytea'],
-          ids.length
-        )};
-      `
-      const values = ids
-        .map((id, i) => [
-          fingerprint,
-          newCount.rows[0].deleted_count - (ids.length - i),
-          id,
-          udefCoalesce(signatures[i], null),
-        ])
-        .reduce((v1, v2) => v1.concat(v2), [])
+      if (newDeletions.rowCount > 0) {
+        const query = `
+          insert into deletions
+          (fingerprint,           id,        data_id,   signature) values ${this.values(
+            ['pgp_fingerprint', 'integer', 'integer', 'bytea'],
+            newDeletions.rowCount
+          )};`
 
-      await client.query(query, values)
+        const values = newDeletions.rows
+          .map((row, i) => [
+            fingerprint,
+            newCount.rows[0].deleted_count - (newDeletions.rowCount - i),
+            row.id,
+            udefCoalesce(signatures[i], null),
+          ])
+          .reduce((v1, v2) => v1.concat(v2), [])
 
-      await client.query(
-        `update data set cyphertext = null where fingerprint = $1::pgp_fingerprint and id in ${this.in(
-          ids.length,
-          2
-        )};`,
-        [fingerprint, ...ids]
-      )
+        await client.query(query, values)
+      }
 
       return {
         deletedCount: newCount.rows[0].deleted_count as number,
@@ -187,10 +210,10 @@ export default class Repo {
 
   public static async getEntity(
     token: string
-  ): Promise<{key: Buffer; fingerprint: Buffer} | null> {
+  ): Promise<{key: Buffer; fingerprint: Buffer; blacklisted: boolean} | null> {
     const result = await pool.query(
       `
-      select key, e.fingerprint
+      select key, e.fingerprint, e.blacklisted
       from entities e
       join access_token a on e.fingerprint = a.fingerprint
       where a.uuid = $1;
@@ -204,24 +227,50 @@ export default class Repo {
     return result.rows[0]
   }
 
-  public static async createAccessToken(fingerprint: Buffer): Promise<string> {
-    await pool.query(
-      `
-      insert into entities
-      (fingerprint) select ($1::pgp_fingerprint)
-      where not exists (select 1 from entities where fingerprint = $1::pgp_fingerprint);
-    `,
-      [fingerprint]
-    )
+  public static async createAccessToken(
+    fingerprint: Buffer,
+    initialize: boolean = false
+  ) {
+    return this.transaction(async client => {
+      if (initialize === true) {
+        await client.query(
+          `
+          insert into entities
+          (fingerprint, admin) select $1::pgp_fingerprint, true
+          where (select count(*) from entities) = 0
+        `,
+          [fingerprint]
+        )
+      }
 
-    const token = await pool.query(
-      `
-      insert into access_token (fingerprint) values ($1) returning uuid;
-    `,
-      [fingerprint]
-    )
+      const created = await client.query(
+        `
+        insert into entities
+        (fingerprint) values ($1::pgp_fingerprint)
+        on conflict(fingerprint) do nothing
+        returning gen_random_uuid() as uuid;
+      `,
+        [fingerprint]
+      )
 
-    return token.rows[0].uuid
+      const allowAnonymous = env.allowAnonymous()
+
+      if (created.rows.length > 0 && !allowAnonymous) {
+        await client.query(`ROLLBACK;`)
+        // return fake uuid to prevent attackers from
+        // figuring out which keys exist in the database
+        return created.rows[0].uuid as string
+      }
+
+      const token = await client.query(
+        `
+        insert into access_token (fingerprint) values ($1) returning uuid;
+      `,
+        [fingerprint]
+      )
+
+      return token.rows[0].uuid as string
+    })
   }
 
   public static async validateAccessToken(token: string, key?: Buffer | Uint8Array) {
@@ -234,7 +283,7 @@ export default class Repo {
           and validated_at is null
         returning fingerprint, date_part('epoch',now() + ($2 || ' seconds')::interval)::int as expires_at;
         `,
-        [token, env.tokenExpirationSeconds]
+        [token, env.tokenExpirationSeconds()]
       )
 
       const row = result.rows[0] as {expires_at: number; fingerprint: Buffer}
@@ -262,9 +311,12 @@ export default class Repo {
       select e.fingerprint, e.key
       from access_token at
       join entities e on e.fingerprint = at.fingerprint
-      where uuid = $1 and validated_at between now() - ($2 || ' seconds')::interval and now();
+      where 1=1
+        and uuid = $1
+        and validated_at between now() - ($2 || ' seconds')::interval and now()
+        and e.blacklisted = false;
     `,
-      [token, env.tokenExpirationSeconds]
+      [token, env.tokenExpirationSeconds()]
     )
 
     if (result.rowCount !== 1) {
@@ -295,5 +347,78 @@ export default class Repo {
     )
 
     return result.rows[0].count as number
+  }
+
+  public static async addBlacklist(fingerprint: Buffer) {
+    return pool.query(
+      `
+      insert into entities
+      (fingerprint, blacklisted) values ($1::pgp_fingerprint, true)
+      on conflict(fingerprint) do update set blacklisted = true;
+    `,
+      [fingerprint]
+    )
+  }
+
+  public static async removeBlacklist(fingerprint: Buffer) {
+    return pool.query(
+      `
+      update entities
+      set blacklisted = false
+      where fingerprint = $1::pgp_fingerprint;
+    `,
+      [fingerprint]
+    )
+  }
+
+  public static async addAdmin(fingerprint: Buffer) {
+    return pool.query(
+      `
+      insert into entities
+      (fingerprint, admin) values ($1::pgp_fingerprint, true)
+      on conflict(fingerprint) do update set admin = true;
+    `,
+      [fingerprint]
+    )
+  }
+
+  public static async removeAdmin(fingerprint: Buffer) {
+    return pool.query(
+      `
+      update entities
+      set admin = false
+      where fingerprint = $1::pgp_fingerprint;
+    `,
+      [fingerprint]
+    )
+  }
+
+  public static async addEntity(fingerprint: Buffer) {
+    return pool.query(
+      `
+      insert into entities
+      (fingerprint) values ($1::pgp_fingerprint)
+      on conflict(fingerprint) do nothing;
+    `,
+      [fingerprint]
+    )
+  }
+
+  public static async isAdmin(
+    fingerprint: Buffer,
+    client?: PoolClient
+  ): Promise<boolean> {
+    const result = await this.query(
+      async c =>
+        c.query(
+          `
+        select 1 from entities
+        where fingerprint = $1::pgp_fingerprint and admin = true;
+      `,
+          [fingerprint]
+        ),
+      client
+    )
+    return result.rows.length === 1
   }
 }

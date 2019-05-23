@@ -5,7 +5,6 @@ import fetch, {Response} from 'node-fetch'
 import {Client} from 'pg'
 import {up, down} from '../migrations'
 import * as db from '../database'
-import Repo from '../src/repository'
 import * as openpgp from 'openpgp'
 import {env} from '../src/environment'
 const uuid = require('uuidv4')
@@ -13,8 +12,9 @@ const uuid = require('uuidv4')
 const url = 'http://localhost:3001'
 
 describe('Auth', async () => {
-  let privateKey: openpgp.key.Key
-  let accessToken: string
+  let adminPrivateKey: openpgp.key.Key
+  let userPrivateKey: openpgp.key.Key
+  let adminAccessToken: string
   let client: Client
 
   before(async () => {
@@ -23,7 +23,13 @@ describe('Auth', async () => {
     await down(db.mocha, false)
     await up(db.mocha, false)
 
-    privateKey = (await openpgp.generateKey({
+    adminPrivateKey = (await openpgp.generateKey({
+      userIds: [{name: 'Jon Smith', email: 'jon@example.com'}],
+      curve: 'curve25519',
+      // preferred symmetric cypher is aes256 for openPGP.js
+    })).key
+
+    userPrivateKey = (await openpgp.generateKey({
       userIds: [{name: 'Jon Smith', email: 'jon@example.com'}],
       curve: 'curve25519',
       // preferred symmetric cypher is aes256 for openPGP.js
@@ -36,7 +42,8 @@ describe('Auth', async () => {
 
   it('should return 400 on bad fingerprint format', async () => {
     const badResponse = await fetch(
-      `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint() + 'A'}`,
+      `${url}/auth/request-token?fingerprint=${adminPrivateKey.getFingerprint() +
+        'A'}`,
       {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -46,25 +53,41 @@ describe('Auth', async () => {
     assert.equal(badResponse.status, 400)
   })
 
-  describe('after requesting a token', async () => {
+  it('should not create an entity if initialize is not passed', async () => {
+    const response = await fetch(
+      `${url}/auth/request-token?fingerprint=${adminPrivateKey.getFingerprint()}`,
+      {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+      }
+    )
+
+    assert.equal(response.status, 200)
+
+    const result = await client.query(`select count(*) from entities`)
+
+    assert.equal(result.rows[0].count, 0)
+  })
+
+  describe('after requesting a token for the first time', async () => {
     let response: Response
     let body: any
     let signed: openpgp.SignResult
 
     before(async () => {
       response = await fetch(
-        `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}`,
+        `${url}/auth/request-token?fingerprint=${adminPrivateKey.getFingerprint()}&initialize=true`,
         {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
         }
       )
       body = await response.json()
-      accessToken = body.token
+      adminAccessToken = body.token
 
       signed = await openpgp.sign({
-        message: openpgp.cleartext.fromText(accessToken),
-        privateKeys: [privateKey],
+        message: openpgp.cleartext.fromText(adminAccessToken),
+        privateKeys: [adminPrivateKey],
         detached: true,
       })
     })
@@ -78,9 +101,9 @@ describe('Auth', async () => {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-          accessToken: accessToken + 'a',
+          accessToken: adminAccessToken + 'a',
           signature: signed.signature,
-          pgpKey: privateKey.toPublic().armor(),
+          pgpKey: adminPrivateKey.toPublic().armor(),
         }),
       })
 
@@ -93,9 +116,9 @@ describe('Auth', async () => {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-          accessToken,
+          accessToken: adminAccessToken,
           signature: 'asdfasdf',
-          pgpKey: privateKey.toPublic().armor(),
+          pgpKey: adminPrivateKey.toPublic().armor(),
         }),
       })
 
@@ -108,7 +131,7 @@ describe('Auth', async () => {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-          accessToken,
+          accessToken: adminAccessToken,
           signature: signed.signature,
           pgpKey: 'asdfasdfasdf',
         }),
@@ -125,7 +148,7 @@ describe('Auth', async () => {
         body: JSON.stringify({
           accessToken: uuid(),
           signature: signed.signature,
-          pgpKey: privateKey.toPublic().armor(),
+          pgpKey: adminPrivateKey.toPublic().armor(),
         }),
       })
 
@@ -138,7 +161,7 @@ describe('Auth', async () => {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-          accessToken,
+          accessToken: adminAccessToken,
           signature: signed.signature,
         }),
       })
@@ -154,7 +177,7 @@ describe('Auth', async () => {
       })).key
 
       const badsigned = await openpgp.sign({
-        message: openpgp.cleartext.fromText(accessToken),
+        message: openpgp.cleartext.fromText(adminAccessToken),
         privateKeys: [differentPrivateKey],
         detached: true,
       })
@@ -163,9 +186,9 @@ describe('Auth', async () => {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-          accessToken,
+          accessToken: adminAccessToken,
           signature: badsigned.signature,
-          pgpKey: privateKey.toPublic().armor(),
+          pgpKey: adminPrivateKey.toPublic().armor(),
         }),
       })
 
@@ -180,7 +203,7 @@ describe('Auth', async () => {
       })).key
 
       const badsigned = await openpgp.sign({
-        message: openpgp.cleartext.fromText(accessToken),
+        message: openpgp.cleartext.fromText(adminAccessToken),
         privateKeys: [differentPrivateKey],
         detached: true,
       })
@@ -189,7 +212,7 @@ describe('Auth', async () => {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-          accessToken,
+          accessToken: adminAccessToken,
           signature: badsigned.signature,
           pgpKey: differentPrivateKey.toPublic().armor(),
         }),
@@ -203,11 +226,27 @@ describe('Auth', async () => {
       const badResponse = await fetch(`${url}/data/me`, {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${adminAccessToken}`,
         },
       })
 
       assert.equal(badResponse.status, 401)
+    })
+
+    it('should not create another entity if an different user trys to sign up', async () => {
+      const newResponse = await fetch(
+        `${url}/auth/request-token?fingerprint=${userPrivateKey.getFingerprint()}`,
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+        }
+      )
+
+      assert.equal(response.status, 200)
+
+      const result = await client.query(`select count(*) from entities`)
+
+      assert.equal(result.rows[0].count, 1)
     })
 
     describe('after validating the token', async () => {
@@ -216,9 +255,9 @@ describe('Auth', async () => {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
-            accessToken,
+            accessToken: adminAccessToken,
             signature: signed.signature,
-            pgpKey: privateKey.toPublic().armor(),
+            pgpKey: adminPrivateKey.toPublic().armor(),
           }),
         })
       })
@@ -232,9 +271,9 @@ describe('Auth', async () => {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
-            accessToken,
+            accessToken: adminAccessToken,
             signature: signed.signature,
-            pgpKey: privateKey.toPublic().armor(),
+            pgpKey: adminPrivateKey.toPublic().armor(),
           }),
         })
 
@@ -242,53 +281,206 @@ describe('Auth', async () => {
         assert.equal((await badResponse.json()).error, 'unauthorized')
       })
 
-      describe('after requesting another token', async () => {
+      describe('after setting ALLOW_ANONYMOUS set to true and requesting a new token with a different key', async () => {
+        let userAccessToken: string
+        let resetResponse: Response
+
         before(async () => {
+          response = await fetch(`${url}/debug/set-env/ALLOW_ANONYMOUS/true`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${adminAccessToken}`,
+            },
+          })
+
           response = await fetch(
-            `${url}/auth/request-token?fingerprint=${privateKey.getFingerprint()}`,
+            `${url}/auth/request-token?fingerprint=${userPrivateKey.getFingerprint()}`,
             {
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
             }
           )
           body = await response.json()
-          accessToken = body.token
+          userAccessToken = body.token
 
           signed = await openpgp.sign({
-            message: openpgp.cleartext.fromText(accessToken),
-            privateKeys: [privateKey],
+            message: openpgp.cleartext.fromText(userAccessToken),
+            privateKeys: [userPrivateKey],
             detached: true,
           })
-        })
 
-        it('should have returned returned a token', async () => {
-          assert.equal(response.status, 200)
-        })
-
-        it('should have not let the key be passed again', async () => {
-          const badResponse = await fetch(`${url}/auth/validate-token`, {
+          response = await fetch(`${url}/auth/validate-token`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-              accessToken,
+              accessToken: userAccessToken,
               signature: signed.signature,
-              pgpKey: privateKey.toPublic().armor(),
+              pgpKey: userPrivateKey.toPublic().armor(),
             }),
           })
 
-          assert.equal(badResponse.status, 401)
-          assert.equal((await badResponse.json()).error, 'unauthorized')
+          response = await fetch(`${url}/data/me`, {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${userAccessToken}`,
+            },
+          })
+
+          resetResponse = await fetch(`${url}/debug/set-env/ALLOW_ANONYMOUS/false`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${adminAccessToken}`,
+            },
+          })
         })
 
-        describe('after validating the second token', async () => {
-          before(async () => {
-            response = await fetch(`${url}/auth/validate-token`, {
+        it('should return OK', async () => {
+          assert.equal(response.status, 200)
+          assert.equal(resetResponse.status, 200)
+        })
+
+        it('should not let a non admin add/remove a blacklist', async () => {
+          const badResponse = await fetch(
+            `${url}/auth/blacklist?fingerprint=${adminPrivateKey.getFingerprint()}`,
+            {
               method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({
-                accessToken,
-                signature: signed.signature,
-              }),
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${userAccessToken}`,
+              },
+            }
+          )
+
+          assert.equal(badResponse.status, 401)
+        })
+
+        describe('after adding the user as an admin', async () => {
+          before(async () => {
+            await fetch(
+              `${url}/auth/admin?fingerprint=${userPrivateKey.getFingerprint()}`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${adminAccessToken}`,
+                },
+              }
+            )
+          })
+
+          describe('after the user creates a new entity for his friend', async () => {
+            let friendPrivateKey: openpgp.key.Key
+
+            before(async () => {
+              friendPrivateKey = (await openpgp.generateKey({
+                userIds: [{name: 'Jon Smith', email: 'jon@example.com'}],
+                curve: 'curve25519',
+                // preferred symmetric cypher is aes256 for openPGP.js
+              })).key
+              response = await fetch(
+                `${url}/auth/entity?fingerprint=${friendPrivateKey.getFingerprint()}`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${userAccessToken}`,
+                  },
+                }
+              )
+            })
+
+            it('should return ok', async () => {
+              assert.equal(response.status, 200)
+            })
+
+            describe('after the friend creates a new token', async () => {
+              before(async () => {
+                response = await fetch(
+                  `${url}/auth/request-token?fingerprint=${friendPrivateKey.getFingerprint()}`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${userAccessToken}`,
+                    },
+                  }
+                )
+              })
+
+              it('should return ok', async () => {
+                assert.equal(response.status, 200)
+              })
+
+              it('should have created the access token', async () => {
+                const result = await client.query(
+                  `select count(*) from access_token where fingerprint = $1::pgp_fingerprint;`,
+                  [Buffer.from(friendPrivateKey.getFingerprint(), 'hex')]
+                )
+                assert.equal(result.rows[0].count, 1)
+              })
+            })
+          })
+
+          describe('after the user removes himself as an admin', async () => {
+            before(async () => {
+              response = await fetch(
+                `${url}/auth/admin?fingerprint=${userPrivateKey.getFingerprint()}`,
+                {
+                  method: 'DELETE',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${userAccessToken}`,
+                  },
+                }
+              )
+            })
+
+            it('should return 200', async () => {
+              assert.equal(response.status, 200)
+            })
+
+            it('should once again not let be able to create new entities', async () => {
+              const fingerprint = '41D96DA752A0725E63DE7E7B98C0723FD785653F'
+              const badResponse = await fetch(
+                `${url}/auth/blacklist?fingerprint=${fingerprint}`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${userAccessToken}`,
+                  },
+                }
+              )
+              assert.equal(badResponse.status, 401)
+
+              const result = await client.query(
+                `select count(*) from entities where fingerprint = $1::pgp_fingerprint;`,
+                [Buffer.from(fingerprint, 'hex')]
+              )
+
+              assert.equal(result.rows[0].count, 0)
+            })
+          })
+        })
+
+        describe('after requesting another token', async () => {
+          before(async () => {
+            response = await fetch(
+              `${url}/auth/request-token?fingerprint=${adminPrivateKey.getFingerprint()}`,
+              {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+              }
+            )
+            body = await response.json()
+            adminAccessToken = body.token
+
+            signed = await openpgp.sign({
+              message: openpgp.cleartext.fromText(adminAccessToken),
+              privateKeys: [adminPrivateKey],
+              detached: true,
             })
           })
 
@@ -296,44 +488,126 @@ describe('Auth', async () => {
             assert.equal(response.status, 200)
           })
 
-          it('should be able to access a protected endpoint', async () => {
-            const goodResponse = await fetch(`${url}/data/me`, {
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${accessToken}`,
-              },
-            })
-
-            assert.equal(goodResponse.status, 200)
-          })
-
-          it('should not be able to access a protected endpoint with a bad token', async () => {
-            const badResponse = await fetch(`${url}/data/me`, {
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${uuid()}`,
-              },
+          it('should have not let the key be passed again', async () => {
+            const badResponse = await fetch(`${url}/auth/validate-token`, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({
+                accessToken: adminAccessToken,
+                signature: signed.signature,
+                pgpKey: adminPrivateKey.toPublic().armor(),
+              }),
             })
 
             assert.equal(badResponse.status, 401)
+            assert.equal((await badResponse.json()).error, 'unauthorized')
           })
 
-          describe('after the token expires', async () => {
+          describe('after validating the second token', async () => {
             before(async () => {
-              await client.query(
-                `update access_token set validated_at = validated_at - ($2 || ' seconds')::interval where uuid = $1;`,
-                [accessToken, env.tokenExpirationSeconds]
-              )
+              response = await fetch(`${url}/auth/validate-token`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                  accessToken: adminAccessToken,
+                  signature: signed.signature,
+                }),
+              })
             })
 
-            it('should not be able to access a protected endpoint with an expired token', async () => {
+            it('should have returned returned a token', async () => {
+              assert.equal(response.status, 200)
+            })
+
+            it('should be able to access a protected endpoint', async () => {
+              const goodResponse = await fetch(`${url}/data/me`, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${adminAccessToken}`,
+                },
+              })
+
+              assert.equal(goodResponse.status, 200)
+            })
+
+            it('should not be able to access a protected endpoint with a bad token', async () => {
               const badResponse = await fetch(`${url}/data/me`, {
                 headers: {
                   'Content-Type': 'application/json',
-                  Authorization: `Bearer ${accessToken}`,
+                  Authorization: `Bearer ${uuid()}`,
                 },
               })
+
               assert.equal(badResponse.status, 401)
+            })
+
+            describe('after blacklisting the user fingerprint', async () => {
+              before(async () => {
+                await fetch(
+                  `${url}/auth/blacklist?fingerprint=${userPrivateKey.getFingerprint()}`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${adminAccessToken}`,
+                    },
+                  }
+                )
+              })
+
+              it('should not be able to access a protected endpoint with blacklisted token', async () => {
+                const badResponse = await fetch(`${url}/data/me`, {
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${userAccessToken}`,
+                  },
+                })
+                assert.equal(badResponse.status, 401)
+              })
+
+              describe('after unblacklisting the fingerprint', async () => {
+                before(async () => {
+                  await fetch(
+                    `${url}/auth/blacklist?fingerprint=${userPrivateKey.getFingerprint()}`,
+                    {
+                      method: 'DELETE',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${adminAccessToken}`,
+                      },
+                    }
+                  )
+                })
+
+                it('should be able to access a protected endpoint with unblacklisted token', async () => {
+                  const goodResponse = await fetch(`${url}/data/me`, {
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${userAccessToken}`,
+                    },
+                  })
+                  assert.equal(goodResponse.status, 200)
+                })
+              })
+            })
+
+            describe('after the token expires', async () => {
+              before(async () => {
+                await client.query(
+                  `update access_token set validated_at = validated_at - ($2 || ' seconds')::interval where uuid = $1;`,
+                  [adminAccessToken, env.tokenExpirationSeconds()]
+                )
+              })
+
+              it('should not be able to access a protected endpoint with an expired token', async () => {
+                const badResponse = await fetch(`${url}/data/me`, {
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${adminAccessToken}`,
+                  },
+                })
+                assert.equal(badResponse.status, 401)
+              })
             })
           })
         })

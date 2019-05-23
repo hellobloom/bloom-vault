@@ -2,13 +2,14 @@ import * as http from 'http'
 import * as express from 'express'
 import * as bodyParser from 'body-parser'
 
-import {env} from './src/environment'
+import {env, PipelineStages} from './src/environment'
 
 import {persistError} from './src/logger'
 
 import {dataRouter} from './src/routes/data'
 import {tokenRouter as authRouter} from './src/routes/auth'
 import {ClientFacingError} from './src/utils'
+import {adminOnlyHandler} from './src/requestUtils'
 
 const helmet = require('helmet')
 
@@ -21,7 +22,7 @@ const port = 3001
 server.listen(port)
 app.use(bodyParser.json({limit: '10mb'}))
 
-if (env.trustProxy === true) {
+if (env.trustProxy() === true) {
   app.enable('trust proxy')
 }
 
@@ -38,6 +39,27 @@ app.use((req, res, next) => {
 
 authRouter(app)
 dataRouter(app)
+
+if (env.pipelineStage() === PipelineStages.development) {
+  app.post(
+    '/debug/set-env/:key/:value',
+    adminOnlyHandler(
+      async (req, res) => {
+        return {
+          key: req.params.key as string,
+          value: req.params.value as string,
+        }
+      },
+      async ({key, value}) => {
+        process.env[key] = value
+        return {
+          status: 200,
+          body: {},
+        }
+      }
+    )
+  )
+}
 
 app.get('*', (req, res, next) => res.status(404).end())
 app.post('*', (req, res, next) => res.status(404).end())
@@ -57,7 +79,7 @@ app.use(
   }
 )
 
-console.log(`Starting server in ${env.pipelineStage} mode`)
+console.log(`Starting server in ${env.pipelineStage()} mode`)
 console.log(`Local:  http://localhost:${port}/`)
 
 process.on('unhandledRejection', error => {

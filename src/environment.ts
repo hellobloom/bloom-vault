@@ -40,12 +40,14 @@ function getTokenExpiration() {
 }
 
 export const env = {
-  nodeEnv: environmentVariable('NODE_ENV'),
-  pipelineStage: getPipelineStage(),
-  trustProxy: toBoolean(environmentVariable('TRUST_PROXY')),
-  tokenExpirationSeconds: getTokenExpiration(),
-  logUrl: environmentVariable('LOG_URL', true),
-  logUser: environmentVariable('LOG_USER', true),
-  logPassword: environmentVariable('LOG_PASSWORD', true),
-  disableRateLimiting: toBoolean(environmentVariable('DISABLE_RATE_LIMITING', true)),
+  nodeEnv: () => environmentVariable('NODE_ENV'),
+  pipelineStage: () => getPipelineStage(),
+  trustProxy: () => toBoolean(environmentVariable('TRUST_PROXY')),
+  tokenExpirationSeconds: () => getTokenExpiration(),
+  logUrl: () => environmentVariable('LOG_URL', true),
+  logUser: () => environmentVariable('LOG_USER', true),
+  logPassword: () => environmentVariable('LOG_PASSWORD', true),
+  disableRateLimiting: () =>
+    toBoolean(environmentVariable('DISABLE_RATE_LIMITING', true)),
+  allowAnonymous: () => toBoolean(environmentVariable('ALLOW_ANONYMOUS')),
 }

@@ -9,7 +9,9 @@ export const production = {
   host: udefCoalesce(process.env.POSTGRES_HOST, 'productiondb'),
   port: udefCoalesce(process.env.POSTGRES_PORT, 5432),
   database: udefCoalesce(process.env.POSTGRES_DATABASE, 'postgres'),
-  ssl: fs.existsSync(ca) ? {ca: fs.readFileSync(ca)} : undefined,
+  ssl: fs.existsSync(ca)
+    ? {ca: fs.readFileSync(ca), rejectUnauthorized: true}
+    : undefined,
 }
 export const mocha = {
   user: 'postgres',

@@ -30,8 +30,8 @@
         "999999",
         "--colors",
         "--recursive",
-        "--grep",
-        "Data",
+        //"--grep",
+        //"Data",
         "${workspaceFolder}/test/**/*.ts"
       ],
       "internalConsoleOptions": "openOnSessionStart"

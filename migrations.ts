@@ -21,7 +21,8 @@ const migrations: IMigration[] = [
         fingerprint pgp_fingerprint primary key,
         key bytea unique,
         data_count integer not null default 0,
-        deleted_count integer not null default 0
+        deleted_count integer not null default 0,
+        blacklisted boolean not null default false
       );
 
       create table data (
@@ -63,6 +64,16 @@ const migrations: IMigration[] = [
       drop table if exists data;
       drop table if exists entities;
       drop domain if exists pgp_fingerprint;
+    `,
+  },
+
+  {
+    name: 'access-control',
+    up: `
+      alter table entities add column admin boolean default false not null;
+      `,
+    down: `
+      alter table entities drop column admin;
     `,
   },
 ]
@@ -108,7 +119,9 @@ export async function down(conf: any, logs: boolean = true) {
     `create table if not exists migrations (name text primary key);`
   )
 
-  for (const migration of migrations.reverse()) {
+  const reversed = migrations.slice().reverse()
+
+  for (const migration of reversed) {
     const result = await client.query(
       `select name from migrations where name = $1`,
       [migration.name]

@@ -61,7 +61,7 @@ docker-compose up --build -d
 
 #### to use a self signed cert for external postgres db
 
-copy the ca.crt to ./pg_ca.crt then
+copy the root cert to ./pg_ca.crt then
 
 ```
 docker-compose -f docker-compose.yml -f docker-pg-ssl.yml up --build

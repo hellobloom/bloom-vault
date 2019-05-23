@@ -7,14 +7,31 @@ import {
 import Repo, {IEntity} from './repository'
 import regularExpressions from './regularExpressions'
 import {env} from './environment'
+import {ClientFacingError} from './utils'
 
 export interface IHandlerResult<T extends object = {}> {
   status: number
   body: T
 }
 
+export type RequestValidator<T> = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => Promise<T>
+export type AuthenticatedRequestValidator<T> = (
+  req: Request & {entity: IEntity},
+  res: Response,
+  next: NextFunction
+) => Promise<T>
+
+// this helps typescript infer the types
+export function createRequestValidator<T>(validator: RequestValidator<T>) {
+  return validator
+}
+
 export function asyncHandler<T>(
-  validator: (req: Request, res: Response, next: NextFunction) => Promise<T>,
+  validator: RequestValidator<T>,
   handler: (parameters: T) => Promise<IHandlerResult>
 ) {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -29,11 +46,7 @@ export function asyncHandler<T>(
 }
 
 export function authenticatedHandler<T>(
-  validator: (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-  ) => Promise<T>,
+  validator: AuthenticatedRequestValidator<T>,
   handler: (parameters: T & {entity: IEntity}) => Promise<IHandlerResult>
 ) {
   return [
@@ -50,12 +63,36 @@ export function authenticatedHandler<T>(
   ]
 }
 
+export function adminOnlyHandler<T>(
+  validator: RequestValidator<T>,
+  handler: (parameters: T & {entity: IEntity}) => Promise<IHandlerResult>
+) {
+  return authenticatedHandler(validator, async params => {
+    if (!(await Repo.isAdmin(params.entity.fingerprint))) {
+      throw new ClientFacingError('unauthorized', 401)
+    }
+    return handler(params)
+  })
+}
+
 export const noValidator = async (_req: Request, _res: Response) => {}
 
 export function noValidatorAuthenticatedHandler(
   handler: (parameters: void & {entity: IEntity}) => Promise<IHandlerResult>
 ) {
   return authenticatedHandler(noValidator, handler)
+}
+
+export async function fingerprintValidator(name: string, fingerprint: string) {
+  const fingerprintRegExps = regularExpressions.auth.fingerprint
+  fingerprint = fingerprint.replace(fingerprintRegExps.hyphen, '')
+  fingerprint = fingerprint.replace(fingerprintRegExps.colon, '')
+  fingerprint = fingerprint.replace('0x', '')
+  const match = fingerprintRegExps.chars.exec(fingerprint)
+  if (!match) {
+    throw new ClientFacingError(`bad ${name} format`)
+  }
+  return fingerprint
 }
 
 export const apiOnly: RequestHandler = (req, res, next) => {
@@ -103,7 +140,7 @@ export function ipRateLimited(
 ): RequestHandler {
   return async (req, res, next) => {
     try {
-      const disable = env.disableRateLimiting
+      const disable = env.disableRateLimiting()
       if (disable) return next()
       const count = await Repo.updateCallCount(req.ip, endpoint)
       if (count > maxPerMinute) {
