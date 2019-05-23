@@ -103,39 +103,42 @@ export default class Repo {
     signatures: Buffer[] | Uint8Array[]
   ) {
     return this.transaction(async client => {
+
+      const newDeletions = await client.query(
+        `update data set cyphertext = null where fingerprint = $1::pgp_fingerprint and cyphertext is not null and id in ${this.in(
+          ids.length,
+          2
+        )} returning id;`,
+        [fingerprint, ...ids]
+      )
+
       const newCount = await client.query(
         `
           update entities set deleted_count = deleted_count + $2
           where fingerprint = $1::pgp_fingerprint
           returning deleted_count, data_count;`,
-        [fingerprint, ids.length]
+        [fingerprint, newDeletions.rowCount]
       )
 
-      const query = `
-        insert into deletions
-        (fingerprint,           id,        data_id,   signature) values ${this.values(
-          ['pgp_fingerprint', 'integer', 'integer', 'bytea'],
-          ids.length
-        )};
-      `
-      const values = ids
-        .map((id, i) => [
-          fingerprint,
-          newCount.rows[0].deleted_count - (ids.length - i),
-          id,
-          udefCoalesce(signatures[i], null),
-        ])
-        .reduce((v1, v2) => v1.concat(v2), [])
+      if (newDeletions.rowCount > 0) {
+        const query = `
+          insert into deletions
+          (fingerprint,           id,        data_id,   signature) values ${this.values(
+            ['pgp_fingerprint', 'integer', 'integer', 'bytea'],
+            newDeletions.rowCount
+          )};`
 
-      await client.query(query, values)
+        const values = newDeletions.rows
+          .map((row, i) => [
+            fingerprint,
+            newCount.rows[0].deleted_count - (newDeletions.rowCount - i),
+            row.id,
+            udefCoalesce(signatures[i], null),
+          ])
+          .reduce((v1, v2) => v1.concat(v2), [])
 
-      await client.query(
-        `update data set cyphertext = null where fingerprint = $1::pgp_fingerprint and id in ${this.in(
-          ids.length,
-          2
-        )};`,
-        [fingerprint, ...ids]
-      )
+        await client.query(query, values)
+      }
 
       return {
         deletedCount: newCount.rows[0].deleted_count as number,

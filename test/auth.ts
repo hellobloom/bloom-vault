@@ -281,7 +281,7 @@ describe('Auth', async () => {
         assert.equal((await badResponse.json()).error, 'unauthorized')
       })
 
-      describe('after setting ALLOW_ANAYMOUS set to true and requesting a new token with a different key', async () => {
+      describe('after setting ALLOW_ANONYMOUS set to true and requesting a new token with a different key', async () => {
         let userAccessToken: string
         let resetResponse: Response
 
