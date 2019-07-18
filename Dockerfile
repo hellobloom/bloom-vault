@@ -5,7 +5,7 @@ RUN mkdir /app
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY database.ts tsconfig.json index.ts migrations.ts ./
 COPY typings typings
