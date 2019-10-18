@@ -7,6 +7,7 @@ import {up, down} from '../migrations'
 import * as db from '../database'
 import * as openpgp from 'openpgp'
 import {env} from '../src/environment'
+console.log(`pg pwd: ${process.env.POSTGRES_PASSWORD}`)
 const uuid = require('uuidv4')
 
 const url = 'http://localhost:3001'
