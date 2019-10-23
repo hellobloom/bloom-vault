@@ -9,6 +9,7 @@ import * as openpgp from 'openpgp'
 import {dataDeletionMessage, udefCoalesce} from '../src/utils'
 import {env} from '../src/environment'
 import {ByteSource} from 'aes-js'
+import {pseudoRandomKey, encryptAES, decryptAES} from './utls/aes'
 const aesjs = require('aes-js')
 
 const url = 'http://localhost:3001'
@@ -25,29 +26,11 @@ interface IUser {
   accessToken: string
 }
 
-const pseudoRandomKey = (keyLength: number = 128): number[] => {
-  if ([16, 24, 32].indexOf(keyLength / 8) === -1)
-    throw new Error(`invalid keyLength: ${keyLength.toString()}`)
-  return [...Array(keyLength / 8)].map(() => Math.floor(Math.random() * 255))
-}
-
 describe('Data', () => {
   let client: Client
   let users: IUser[]
   let firstUser: IUser
   let secondUser: IUser
-
-  // This function is only used for testing and formatting. Not for real data
-  function encryptAES(text: string, key: ByteSource): string {
-    const textBytes = aesjs.utils.utf8.toBytes(text)
-    // The counter is optional, and if omitted will begin at 1
-    const aesCtr = new aesjs.ModeOfOperation.ctr(key)
-    const encryptedBytes = aesCtr.encrypt(textBytes)
-
-    // To print or store the binary data, you may convert it to hex
-    const encryptedHex = aesjs.utils.hex.fromBytes(encryptedBytes)
-    return encryptedHex
-  }
 
   async function requestToken(user: IUser, initialize: boolean = false) {
     const response = await fetch(
@@ -241,7 +224,7 @@ describe('Data', () => {
       }
     })
 
-    it.only('should return the number of data objects for each user', async () => {
+    it('should return the number of data objects for each user', async () => {
       for (const user of users) {
         const response = await getMe(user.accessToken)
         const body = await response.json()
@@ -259,16 +242,10 @@ describe('Data', () => {
       const body = await response.json()
       assert.equal(body[0].id, 0)
       assert.equal(body.length, firstUser.data.length)
-      const decrypted = await openpgp.decrypt({
-        message: await openpgp.message.readArmored(body[0].cyphertext),
-        publicKeys: [firstUser.pgpKey.toPublic()],
-        privateKeys: [firstUser.pgpKey],
-      })
-      const plaintext = await openpgp.stream.readToEnd(decrypted.data as string)
-      const data = JSON.parse(plaintext) as IData
+      const decrypted = await decryptAES(body[0].cyphertext, firstUser.aesKey)
+      const data = JSON.parse(decrypted) as IData
       assert.equal(data.id, firstUser.data[0].id)
       assert.equal(data.text, firstUser.data[0].text)
-      assert.equal(decrypted.signatures[0].valid, true)
     })
 
     it('can get a range of data in order', async () => {
@@ -280,16 +257,11 @@ describe('Data', () => {
       const body = (await response.json()) as Array<{id: number; cyphertext: string}>
       assert.equal(body.length, 2)
       body.forEach(async (blob, i) => {
-        const exptectedId = secondUser.data.length - 2 + i
-        const decrypted = await openpgp.decrypt({
-          message: await openpgp.message.readArmored(blob.cyphertext),
-          publicKeys: [secondUser.pgpKey.toPublic()],
-          privateKeys: [secondUser.pgpKey],
-        })
-        const plaintext = await openpgp.stream.readToEnd(decrypted.data as string)
-        const data = JSON.parse(plaintext) as IData
-        assert.equal(exptectedId, blob.id)
-        assert.equal(exptectedId, data.id)
+        const expectedId = secondUser.data.length - 2 + i
+        const decrypted = await decryptAES(blob.cyphertext, secondUser.aesKey)
+        const data = JSON.parse(decrypted) as IData
+        assert.equal(expectedId, blob.id)
+        assert.equal(expectedId, data.id)
       })
     })
 
@@ -299,32 +271,16 @@ describe('Data', () => {
     })
 
     it('cannot insert data out of order', async () => {
-      const message = (await openpgp.encrypt({
-        message: openpgp.message.fromText('test'),
-        publicKeys: [firstUser.pgpKey.toPublic()],
-        privateKeys: [firstUser.pgpKey],
-      })) as openpgp.EncryptArmorResult
+      const message = encryptAES('test', firstUser.aesKey)
 
       const response = await postData(
         firstUser.accessToken,
-        message.data,
+        message,
         firstUser.data.length + 1
       )
       const body = await response.json()
       assert.equal(response.status, 400)
       assert.equal(body.error, 'id not in sequence')
-    })
-
-    it('cannot insert malformed cyphertext', async () => {
-      const malformedData = 'ThisIsNotCyphertext'
-      const response = await postData(
-        firstUser.accessToken,
-        malformedData,
-        firstUser.data.length
-      )
-      const body = await response.json()
-      assert.equal(response.status, 400)
-      assert.equal(body.error, 'bad cyphertext format')
     })
 
     it('should not let too few signatures be passed if passed', async () => {

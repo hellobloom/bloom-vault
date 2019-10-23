@@ -116,3 +116,5 @@ export function toBoolean(value?: string | boolean) {
   if (Number(value) === 1) return true
   return false
 }
+
+export const isNotEmpty = (value: string) => value.replace(/\s+/g, '') !== ''

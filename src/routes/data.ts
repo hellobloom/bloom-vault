@@ -14,6 +14,7 @@ import {
   ClientFacingError,
   udefCoalesce,
   dataDeletionMessage,
+  isNotEmpty,
 } from '../utils'
 
 export const dataRouter = (app: express.Application) => {
@@ -51,10 +52,7 @@ export const dataRouter = (app: express.Application) => {
           entities.map(async e => {
             let cyphertext: string | null = null
             if (e.cyphertext) {
-              const array = new Uint8Array(e.cyphertext)
-              const message = await openpgp.message.read(array)
-              const stream = await message.armor()
-              cyphertext = await openpgp.stream.readToEnd(stream)
+              cyphertext = await e.cyphertext.toString()
             }
             return {
               id: e.id,
@@ -82,20 +80,10 @@ export const dataRouter = (app: express.Application) => {
           id: optionalNumber,
           cyphertext: async (name, value) => {
             try {
-              // const message = await openpgp.message.readArmored(value)
-              // if (message.err) { throw message.err }
-              // const compressed = message.compress(openpgp.enums.compression.zip)
-              // const stream = compressed.packets.write()
-              // const bytes = await openpgp.stream.readToEnd(stream)
-              // return bytes
-
-              const message = (await openpgp.message.readArmored(value)) as any
-              if (message.err) {
-                throw message.err
+              if (!isNotEmpty(value)) {
+                throw new Error(`cyphertext cannot be empty`)
               }
-              const stream = message.packets.write()
-              const bytes = await openpgp.stream.readToEnd(stream)
-              return bytes
+              return Buffer.from(value)
             } catch (err) {
               throw new ClientFacingError(`bad ${name} format`)
             }
