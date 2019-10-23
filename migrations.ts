@@ -15,10 +15,10 @@ const migrations: IMigration[] = [
       CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
       CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-      create domain pgp_fingerprint as bytea constraint fingerprint_length check (octet_length(VALUE) = 20);
+      --create domain pgp_fingerprint as bytea constraint fingerprint_length check (octet_length(VALUE) = 20);
 
       create table entities (
-        fingerprint pgp_fingerprint primary key,
+        did text primary key,
         key bytea unique,
         data_count integer not null default 0,
         deleted_count integer not null default 0,
@@ -27,23 +27,23 @@ const migrations: IMigration[] = [
 
       create table data (
         id integer not null,
-        fingerprint pgp_fingerprint references entities not null,
+        did text references entities not null,
         cyphertext bytea null,
-        primary key (id, fingerprint)
+        primary key (id, did)
       );
 
       create table deletions (
         id integer not null,
         data_id integer not null,
-        fingerprint pgp_fingerprint references entities not null,
+        did text references entities not null,
         signature bytea null,
-        primary key (id, fingerprint),
-        foreign key (data_id, fingerprint) references data
+        primary key (id, did),
+        foreign key (data_id, did) references data
       );
 
       create table access_token (
-        uuid         uuid default gen_random_uuid() primary key,
-        fingerprint    pgp_fingerprint not null references entities,
+        uuid uuid default gen_random_uuid() primary key,
+        did text not null references entities,
         validated_at timestamp with time zone
       );
       create table ip_call_count
@@ -63,7 +63,7 @@ const migrations: IMigration[] = [
       drop table if exists deletions;
       drop table if exists data;
       drop table if exists entities;
-      drop domain if exists pgp_fingerprint;
+      --drop domain if exists pgp_fingerprint;
     `,
   },
 
@@ -79,6 +79,7 @@ const migrations: IMigration[] = [
 ]
 
 export async function up(conf: any, logs: boolean = true) {
+  console.log(conf)
   const client = new Client(conf)
   await client.connect()
   logs && console.log('running migrations')
@@ -148,6 +149,7 @@ process.on('unhandledRejection', reason => {
   throw reason
 })
 
+console.log(module.parent)
 if (!module.parent) {
   up(config[process.env.NODE_ENV!]).catch(e => {
     throw e

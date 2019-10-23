@@ -3,15 +3,19 @@ import {
   apiOnly,
   asyncHandler,
   ipRateLimited,
-  fingerprintValidator,
   adminOnlyHandler,
-  RequestValidator,
   createRequestValidator,
+  didValidator,
 } from '../requestUtils'
 import Repo from '../repository'
-import * as openpgp from 'openpgp'
 import regularExpressions from '../regularExpressions'
-import {ModelValidator, ClientFacingError, toBoolean, Validator} from '../utils'
+import {
+  ModelValidator,
+  ClientFacingError,
+  toBoolean,
+  recoverEthAddressFromPersonalRpcSig,
+} from '../utils'
+import * as EthU from 'ethereumjs-util'
 
 export const tokenRouter = (app: express.Application) => {
   app.post(
@@ -19,24 +23,21 @@ export const tokenRouter = (app: express.Application) => {
     ipRateLimited(20, 'request-token'),
     apiOnly,
     asyncHandler(
-      async (req, res, next) => {
-        const query = req.query as {fingerprint: string; initialize: boolean}
+      async req => {
+        const query = req.query as {did: string; initialize: boolean}
         const validator = new ModelValidator(query, {initialize: true})
 
         return validator.validate({
-          fingerprint: fingerprintValidator,
-          initialize: (name, value) => toBoolean(value),
+          did: didValidator,
+          initialize: (_name, value) => toBoolean(value),
         })
       },
 
-      async ({fingerprint, initialize}) => {
+      async ({did, initialize}) => {
         return {
           status: 200,
           body: {
-            token: await Repo.createAccessToken(
-              Buffer.from(fingerprint, 'hex'),
-              initialize
-            ),
+            token: await Repo.createAccessToken(did, initialize),
           },
         }
       }
@@ -48,13 +49,14 @@ export const tokenRouter = (app: express.Application) => {
     ipRateLimited(20, 'validate-token'),
     apiOnly,
     asyncHandler(
-      async (req, res, next) => {
+      async req => {
         const body = req.body as {
           accessToken: string
           signature: string
-          pgpKey: string
+          did: string
         }
-        const validator = new ModelValidator(body, {pgpKey: true})
+        const validator = new ModelValidator(body)
+        console.log(JSON.stringify(body))
 
         return validator.validate({
           accessToken: async (name, value) => {
@@ -64,81 +66,24 @@ export const tokenRouter = (app: express.Application) => {
             }
             return value
           },
+          did: didValidator,
           signature: async (name, value) => {
-            try {
-              const sig = await openpgp.signature.readArmored(value)
-              if (sig.err) {
-                throw sig.err
-              }
-              return sig
-            } catch (err) {
-              throw new ClientFacingError(`bad ${name} format`)
+            const ethAddress = EthU.bufferToHex(
+              recoverEthAddressFromPersonalRpcSig(body.accessToken, value)
+            )
+            if (ethAddress !== body.did.replace('did:ethr:', '')) {
+              throw new ClientFacingError(`bad ${name} value`)
             }
-          },
-          pgpKey: async (name, value) => {
-            try {
-              if (value) {
-                const key = await openpgp.key.readArmored(value)
-                if (key.err) {
-                  throw key.err
-                }
-                return key
-              }
-              return undefined
-            } catch (err) {
-              throw new ClientFacingError(`bad ${name} format`)
-            }
+            return value
           },
         })
       },
-
-      async ({accessToken, pgpKey, signature}) => {
-        const newKey = !!pgpKey
-        // if its not included get it from the database
-        const entity = await Repo.getEntity(accessToken)
-
-        if (!entity) {
-          // entity should exist already
-          throw new ClientFacingError('unauthorized', 401)
-        }
-        if (entity.blacklisted) {
-          // if they pass a key there should not be a key yet
-          throw new ClientFacingError('unauthorized', 401)
-        }
-        if (pgpKey && entity.key) {
-          // if they pass a key there should not be a key yet
-          throw new ClientFacingError('unauthorized', 401)
-        }
-        if (!pgpKey) {
-          if (!entity.key) {
-            // if they dont pass a key there should already be an entity with a key
-            throw new ClientFacingError('unauthorized', 401)
-          }
-          pgpKey = await openpgp.key.read(entity.key)
-        }
-        if (entity.fingerprint.toString('hex') !== pgpKey.keys[0].getFingerprint()) {
-          throw new ClientFacingError('unauthorized', 401)
-        }
-
-        const verified = await openpgp.verify({
-          signature,
-          message: openpgp.cleartext.fromText(accessToken),
-          publicKeys: pgpKey.keys,
-        })
-
-        if (!verified.signatures[0].valid) {
-          throw new ClientFacingError('unauthorized', 401)
-        }
-
-        const expiresAt = await Repo.validateAccessToken(
-          accessToken,
-          newKey ? pgpKey.keys[0].toPacketlist().write() : undefined
-        )
+      async ({accessToken, signature}) => {
+        const expiresAt = await Repo.validateAccessToken(accessToken, signature)
 
         if (!expiresAt) {
           throw new ClientFacingError('unauthorized', 401)
         }
-
         return {
           status: 200,
           body: {expiresAt},
@@ -147,20 +92,20 @@ export const tokenRouter = (app: express.Application) => {
     )
   )
 
-  const parseFingerprint = createRequestValidator(async (req, res, next) => {
-    const query = req.query as {fingerprint: string}
+  const parseDID = createRequestValidator(async req => {
+    const query = req.query as {did: string}
     const validator = new ModelValidator(query)
 
     return validator.validate({
-      fingerprint: fingerprintValidator,
+      did: didValidator,
     })
   })
 
   app.post(
     '/auth/blacklist',
     apiOnly,
-    adminOnlyHandler(parseFingerprint, async ({fingerprint}) => {
-      await Repo.addBlacklist(Buffer.from(fingerprint, 'hex'))
+    adminOnlyHandler(parseDID, async ({did}) => {
+      await Repo.addBlacklist(did)
       return {
         status: 200,
         body: {},
@@ -171,8 +116,8 @@ export const tokenRouter = (app: express.Application) => {
   app.delete(
     '/auth/blacklist',
     apiOnly,
-    adminOnlyHandler(parseFingerprint, async ({fingerprint}) => {
-      await Repo.removeBlacklist(Buffer.from(fingerprint, 'hex'))
+    adminOnlyHandler(parseDID, async ({did}) => {
+      await Repo.removeBlacklist(did)
       return {
         status: 200,
         body: {},
@@ -183,8 +128,8 @@ export const tokenRouter = (app: express.Application) => {
   app.post(
     '/auth/admin',
     apiOnly,
-    adminOnlyHandler(parseFingerprint, async ({fingerprint}) => {
-      await Repo.addAdmin(Buffer.from(fingerprint, 'hex'))
+    adminOnlyHandler(parseDID, async ({did}) => {
+      await Repo.addAdmin(did)
       return {
         status: 200,
         body: {},
@@ -195,8 +140,8 @@ export const tokenRouter = (app: express.Application) => {
   app.delete(
     '/auth/admin',
     apiOnly,
-    adminOnlyHandler(parseFingerprint, async ({fingerprint}) => {
-      await Repo.removeAdmin(Buffer.from(fingerprint, 'hex'))
+    adminOnlyHandler(parseDID, async ({did}) => {
+      await Repo.removeAdmin(did)
       return {
         status: 200,
         body: {},
@@ -207,8 +152,8 @@ export const tokenRouter = (app: express.Application) => {
   app.post(
     '/auth/entity',
     apiOnly,
-    adminOnlyHandler(parseFingerprint, async ({fingerprint}) => {
-      await Repo.addEntity(Buffer.from(fingerprint, 'hex'))
+    adminOnlyHandler(parseDID, async ({did}) => {
+      await Repo.addEntity(did)
       return {
         status: 200,
         body: {},

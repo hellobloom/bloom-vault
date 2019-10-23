@@ -8,6 +8,15 @@ import Repo, {IEntity} from './repository'
 import regularExpressions from './regularExpressions'
 import {env} from './environment'
 import {ClientFacingError} from './utils'
+import {Resolver} from 'did-resolver'
+import {
+  IDidResolver,
+  IDidResolveResult,
+  DidDocument,
+  IDidDocument,
+  IDidDocumentPublicKey,
+} from '@decentralized-identity/did-common-typescript'
+const EthrDidResolver = require('ethr-did-resolver')
 
 export interface IHandlerResult<T extends object = {}> {
   status: number
@@ -68,7 +77,7 @@ export function adminOnlyHandler<T>(
   handler: (parameters: T & {entity: IEntity}) => Promise<IHandlerResult>
 ) {
   return authenticatedHandler(validator, async params => {
-    if (!(await Repo.isAdmin(params.entity.fingerprint))) {
+    if (!(await Repo.isAdmin(params.entity.did))) {
       throw new ClientFacingError('unauthorized', 401)
     }
     return handler(params)
@@ -83,16 +92,54 @@ export function noValidatorAuthenticatedHandler(
   return authenticatedHandler(noValidator, handler)
 }
 
-export async function fingerprintValidator(name: string, fingerprint: string) {
-  const fingerprintRegExps = regularExpressions.auth.fingerprint
-  fingerprint = fingerprint.replace(fingerprintRegExps.hyphen, '')
-  fingerprint = fingerprint.replace(fingerprintRegExps.colon, '')
-  fingerprint = fingerprint.replace('0x', '')
-  const match = fingerprintRegExps.chars.exec(fingerprint)
-  if (!match) {
+/**
+ * DID Resolver that outputs a properly formatted did:ethr:0x... did document
+ * by wrapping the functionality of ethr-did-resolver and did-resolver packages
+ * to output the types @decentralized-identity/did-common-typescript that are
+ * more aligned with the current specs.
+ */
+export class EthereumDidResolver implements IDidResolver {
+  public async resolve(did: string): Promise<IDidResolveResult> {
+    const ethrDidResolver = EthrDidResolver.getResolver()
+    const resolver = new Resolver(ethrDidResolver)
+    const resolvedDidDocument = await resolver.resolve(did)
+    if (!resolvedDidDocument) {
+      throw Error('unable to resolve did document')
+    }
+
+    const pubKeys: IDidDocumentPublicKey[] = resolvedDidDocument.publicKey.map(
+      p => ({
+        ...p,
+        controller: p.owner,
+      })
+    )
+    const didDocument: IDidDocument = {
+      id: resolvedDidDocument.id,
+      '@context': resolvedDidDocument['@context'],
+      authentication: resolvedDidDocument.authentication,
+      publicKey: pubKeys,
+      service: resolvedDidDocument.service,
+    }
+    return {
+      didDocument: new DidDocument(didDocument),
+    }
+  }
+}
+
+/**
+ * Validates dids by resolving to a did document.
+ * Supported formats:
+ * - did:ethr:0x...
+ */
+export async function didValidator(name: string, did: string) {
+  try {
+    const {didDocument} = await new EthereumDidResolver().resolve(did)
+    console.log(`didDocument resolved: ${JSON.stringify(didDocument)}`)
+    return didDocument.id
+  } catch (err) {
+    console.log(`didValidator error: ${err}`)
     throw new ClientFacingError(`bad ${name} format`)
   }
-  return fingerprint
 }
 
 export const apiOnly: RequestHandler = (req, res, next) => {
