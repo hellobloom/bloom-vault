@@ -149,7 +149,6 @@ process.on('unhandledRejection', reason => {
   throw reason
 })
 
-console.log(module.parent)
 if (!module.parent) {
   up(config[process.env.NODE_ENV!]).catch(e => {
     throw e

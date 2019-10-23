@@ -145,3 +145,12 @@ export function recoverEthAddressFromPersonalRpcSig(
 
   return recoverEthAddressFromDigest(hashed, rpcSig)
 }
+
+export function personalSign(message: string, privateKey: string) {
+  const sig = EthU.ecsign(
+    EthU.hashPersonalMessage(EthU.toBuffer(message)),
+    EthU.toBuffer(privateKey)
+  )
+
+  return EthU.toRpcSig(sig.v, sig.r, sig.s)
+}

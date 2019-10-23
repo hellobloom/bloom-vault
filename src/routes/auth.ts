@@ -56,7 +56,6 @@ export const tokenRouter = (app: express.Application) => {
           did: string
         }
         const validator = new ModelValidator(body)
-        console.log(JSON.stringify(body))
 
         return validator.validate({
           accessToken: async (name, value) => {

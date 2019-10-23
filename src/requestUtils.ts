@@ -134,7 +134,6 @@ export class EthereumDidResolver implements IDidResolver {
 export async function didValidator(name: string, did: string) {
   try {
     const {didDocument} = await new EthereumDidResolver().resolve(did)
-    console.log(`didDocument resolved: ${JSON.stringify(didDocument)}`)
     return didDocument.id
   } catch (err) {
     console.log(`didValidator error: ${err}`)
