@@ -8,6 +8,9 @@ import * as db from '../database'
 import * as openpgp from 'openpgp'
 import {dataDeletionMessage, udefCoalesce} from '../src/utils'
 import {env} from '../src/environment'
+import {ByteSource} from 'aes-js'
+import {pseudoRandomKey, encryptAES, decryptAES} from './utls/aes'
+const aesjs = require('aes-js')
 
 const url = 'http://localhost:3001'
 
@@ -17,7 +20,8 @@ interface IData {
 }
 
 interface IUser {
-  key: openpgp.key.Key
+  pgpKey: openpgp.key.Key
+  aesKey: ByteSource
   data: IData[]
   accessToken: string
 }
@@ -30,7 +34,7 @@ describe('Data', () => {
 
   async function requestToken(user: IUser, initialize: boolean = false) {
     const response = await fetch(
-      `${url}/auth/request-token?fingerprint=${user.key.getFingerprint()}&initialize=${initialize}`,
+      `${url}/auth/request-token?fingerprint=${user.pgpKey.getFingerprint()}&initialize=${initialize}`,
       {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -48,10 +52,10 @@ describe('Data', () => {
         accessToken: user.accessToken,
         signature: (await openpgp.sign({
           message: openpgp.cleartext.fromText(user.accessToken),
-          privateKeys: [user.key],
+          privateKeys: [user.pgpKey],
           detached: true,
         })).signature,
-        pgpKey: user.key.toPublic().armor(),
+        pgpKey: user.pgpKey.toPublic().armor(),
       }),
     })
   }
@@ -117,20 +121,23 @@ describe('Data', () => {
     await down(db.mocha, false)
     await up(db.mocha, false)
 
+    // PGP Key Generation
     firstUser = {
-      key: (await openpgp.generateKey({
+      pgpKey: (await openpgp.generateKey({
         userIds: [{name: 'Jon Smith'}],
         curve: 'curve25519',
       })).key,
+      aesKey: pseudoRandomKey(),
       data: [{id: 0, text: 'user0data0'}, {id: 1, text: 'user0data1'}],
       accessToken: '',
     }
 
     secondUser = {
-      key: (await openpgp.generateKey({
+      pgpKey: (await openpgp.generateKey({
         userIds: [{name: 'Jon Doe'}],
         curve: 'curve25519',
       })).key,
+      aesKey: pseudoRandomKey(),
       data: [
         {id: 0, text: 'user1data0'},
         {id: 1, text: 'user1data1'},
@@ -172,8 +179,11 @@ describe('Data', () => {
     for (const user of users) {
       const response = await getMe(user.accessToken)
       const body = await response.json()
-      assert.equal(body.pgpKey, user.key.toPublic().armor())
-      assert.equal(body.pgpKeyFingerprint, user.key.getFingerprint().toUpperCase())
+      assert.equal(body.pgpKey, user.pgpKey.toPublic().armor())
+      assert.equal(
+        body.pgpKeyFingerprint,
+        user.pgpKey.getFingerprint().toUpperCase()
+      )
       assert.equal(body.dataCount, 0)
       assert.equal(body.deletedCount, 0)
       assert.equal(response.status, 200)
@@ -202,16 +212,12 @@ describe('Data', () => {
       for (const user of users) {
         for (const data of user.data) {
           const plaintext = JSON.stringify(data)
-          const message = (await openpgp.encrypt({
-            message: openpgp.message.fromText(plaintext),
-            publicKeys: [user.key.toPublic()],
-            privateKeys: [user.key],
-          })) as openpgp.EncryptArmorResult
+          const message = encryptAES(plaintext, user.aesKey)
 
           // only specify the id sometimes to test with or without it
-          await postData(
+          const response = await postData(
             user.accessToken,
-            message.data,
+            message,
             data.id % 2 === 0 ? data.id : undefined
           )
         }
@@ -236,16 +242,10 @@ describe('Data', () => {
       const body = await response.json()
       assert.equal(body[0].id, 0)
       assert.equal(body.length, firstUser.data.length)
-      const decrypted = await openpgp.decrypt({
-        message: await openpgp.message.readArmored(body[0].cyphertext),
-        publicKeys: [firstUser.key.toPublic()],
-        privateKeys: [firstUser.key],
-      })
-      const plaintext = await openpgp.stream.readToEnd(decrypted.data as string)
-      const data = JSON.parse(plaintext) as IData
+      const decrypted = await decryptAES(body[0].cyphertext, firstUser.aesKey)
+      const data = JSON.parse(decrypted) as IData
       assert.equal(data.id, firstUser.data[0].id)
       assert.equal(data.text, firstUser.data[0].text)
-      assert.equal(decrypted.signatures[0].valid, true)
     })
 
     it('can get a range of data in order', async () => {
@@ -257,16 +257,11 @@ describe('Data', () => {
       const body = (await response.json()) as Array<{id: number; cyphertext: string}>
       assert.equal(body.length, 2)
       body.forEach(async (blob, i) => {
-        const exptectedId = secondUser.data.length - 2 + i
-        const decrypted = await openpgp.decrypt({
-          message: await openpgp.message.readArmored(blob.cyphertext),
-          publicKeys: [secondUser.key.toPublic()],
-          privateKeys: [secondUser.key],
-        })
-        const plaintext = await openpgp.stream.readToEnd(decrypted.data as string)
-        const data = JSON.parse(plaintext) as IData
-        assert.equal(exptectedId, blob.id)
-        assert.equal(exptectedId, data.id)
+        const expectedId = secondUser.data.length - 2 + i
+        const decrypted = await decryptAES(blob.cyphertext, secondUser.aesKey)
+        const data = JSON.parse(decrypted) as IData
+        assert.equal(expectedId, blob.id)
+        assert.equal(expectedId, data.id)
       })
     })
 
@@ -276,32 +271,16 @@ describe('Data', () => {
     })
 
     it('cannot insert data out of order', async () => {
-      const message = (await openpgp.encrypt({
-        message: openpgp.message.fromText('test'),
-        publicKeys: [firstUser.key.toPublic()],
-        privateKeys: [firstUser.key],
-      })) as openpgp.EncryptArmorResult
+      const message = encryptAES('test', firstUser.aesKey)
 
       const response = await postData(
         firstUser.accessToken,
-        message.data,
+        message,
         firstUser.data.length + 1
       )
       const body = await response.json()
       assert.equal(response.status, 400)
       assert.equal(body.error, 'id not in sequence')
-    })
-
-    it('cannot insert malformed cyphertext', async () => {
-      const malformedData = 'ThisIsNotCyphertext'
-      const response = await postData(
-        firstUser.accessToken,
-        malformedData,
-        firstUser.data.length
-      )
-      const body = await response.json()
-      assert.equal(response.status, 400)
-      assert.equal(body.error, 'bad cyphertext format')
     })
 
     it('should not let too few signatures be passed if passed', async () => {
@@ -318,7 +297,7 @@ describe('Data', () => {
       const signatures = [
         (await openpgp.sign({
           message: openpgp.cleartext.fromText(dataDeletionMessage(id + 1)),
-          privateKeys: [secondUser.key],
+          privateKeys: [secondUser.pgpKey],
           detached: true,
         })).signature as string,
       ]
@@ -344,7 +323,7 @@ describe('Data', () => {
           [start, end].map(async id => {
             return (await openpgp.sign({
               message: openpgp.cleartext.fromText(dataDeletionMessage(id)),
-              privateKeys: [secondUser.key],
+              privateKeys: [secondUser.pgpKey],
               detached: true,
             })).signature as string
           })
@@ -379,7 +358,7 @@ describe('Data', () => {
           const verified = await openpgp.verify({
             signature: await openpgp.signature.readArmored(deletion.signature),
             message: openpgp.cleartext.fromText(dataDeletionMessage(deletion.id)),
-            publicKeys: [secondUser.key.toPublic()],
+            publicKeys: [secondUser.pgpKey.toPublic()],
           })
           assert.equal(verified.signatures[0].valid, true)
         }
