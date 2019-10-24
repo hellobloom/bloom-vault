@@ -50,4 +50,5 @@ export const env = {
   disableRateLimiting: () =>
     toBoolean(environmentVariable('DISABLE_RATE_LIMITING', true)),
   allowAnonymous: () => toBoolean(environmentVariable('ALLOW_ANONYMOUS')),
+  web3Provider: () => environmentVariable('WEB3_PROVIDER'),
 }

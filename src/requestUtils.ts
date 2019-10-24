@@ -98,9 +98,14 @@ export function noValidatorAuthenticatedHandler(
  * to output the types @decentralized-identity/did-common-typescript that are
  * more aligned with the current specs.
  */
-export class EthereumDidResolver implements IDidResolver {
+export class EthereumDIDResolver implements IDidResolver {
   public async resolve(did: string): Promise<IDidResolveResult> {
-    const ethrDidResolver = EthrDidResolver.getResolver()
+    const ethrDidResolver = EthrDidResolver.getResolver({
+      rpcUrl: env.web3Provider,
+      // TODO: Should we deploy an ethr-did-registry contract for Bloom IDs?
+      // You can also set an address for your own ethr-did-registry contract
+      // registry: env.registryAddress
+    })
     const resolver = new Resolver(ethrDidResolver)
     const resolvedDidDocument = await resolver.resolve(did)
     if (!resolvedDidDocument) {
@@ -133,7 +138,7 @@ export class EthereumDidResolver implements IDidResolver {
  */
 export async function didValidator(name: string, did: string) {
   try {
-    const {didDocument} = await new EthereumDidResolver().resolve(did)
+    const {didDocument} = await new EthereumDIDResolver().resolve(did)
     return didDocument.id
   } catch (err) {
     console.log(`didValidator error: ${err}`)
