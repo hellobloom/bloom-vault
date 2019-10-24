@@ -14,11 +14,8 @@ const migrations: IMigration[] = [
     up: `
       CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-      --create domain pgp_fingerprint as bytea constraint fingerprint_length check (octet_length(VALUE) = 20);
-
       create table entities (
         did text primary key,
-        key bytea unique,
         data_count integer not null default 0,
         deleted_count integer not null default 0,
         blacklisted boolean not null default false
@@ -35,7 +32,7 @@ const migrations: IMigration[] = [
         id integer not null,
         data_id integer not null,
         did text references entities not null,
-        signature bytea null,
+        signature text null,
         primary key (id, did),
         foreign key (data_id, did) references data
       );
@@ -62,7 +59,6 @@ const migrations: IMigration[] = [
       drop table if exists deletions;
       drop table if exists data;
       drop table if exists entities;
-      --drop domain if exists pgp_fingerprint;
     `,
   },
 

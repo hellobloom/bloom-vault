@@ -15,7 +15,6 @@ pool.on('error', (err, client) => {
 
 export interface IEntity {
   did: string
-  key: Buffer
 }
 
 export default class Repo {
@@ -68,7 +67,7 @@ export default class Repo {
     )
     return result.rows as Array<{
       data_id: number
-      signature: Buffer | null
+      signature: string
     }>
   }
 
@@ -94,11 +93,7 @@ export default class Repo {
     return query.slice(0, -1)
   }
 
-  public static async deleteData(
-    did: string,
-    ids: number[],
-    signatures: Buffer[] | Uint8Array[]
-  ) {
+  public static async deleteData(did: string, ids: number[], signatures: string[]) {
     return this.transaction(async client => {
       const newDeletions = await client.query(
         `update data set cyphertext = null where did = $1::text and cyphertext is not null and id in ${this.in(
@@ -120,7 +115,7 @@ export default class Repo {
         const query = `
           insert into deletions
           (did,           id,        data_id,   signature) values ${this.values(
-            ['text', 'integer', 'integer', 'bytea'],
+            ['text', 'integer', 'integer', 'text'],
             newDeletions.rowCount
           )};`
 
@@ -308,9 +303,9 @@ export default class Repo {
   public static async checkAccessToken(token: string) {
     const result = await pool.query(
       `
-      select e.did, e.key
+      select e.did
       from access_token at
-      join entities e on e.did = at.did
+        join entities e on e.did = at.did
       where 1=1
         and uuid = $1
         and validated_at between now() - ($2 || ' seconds')::interval and now()
