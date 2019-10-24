@@ -79,7 +79,6 @@ const migrations: IMigration[] = [
 ]
 
 export async function up(conf: any, logs: boolean = true) {
-  console.log(conf)
   const client = new Client(conf)
   await client.connect()
   logs && console.log('running migrations')
