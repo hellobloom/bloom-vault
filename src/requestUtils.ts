@@ -8,7 +8,7 @@ import Repo, {IEntity} from './repository'
 import regularExpressions from './regularExpressions'
 import {env} from './environment'
 import {ClientFacingError} from './utils'
-import {Resolver} from 'did-resolver'
+// import {Resolver} from 'did-resolver'
 import {
   IDidResolver,
   IDidResolveResult,
@@ -16,7 +16,8 @@ import {
   IDidDocument,
   IDidDocumentPublicKey,
 } from '@decentralized-identity/did-common-typescript'
-const EthrDidResolver = require('ethr-did-resolver')
+// const EthrDidResolver = require('ethr-did-resolver')
+import * as EthU from 'ethereumjs-util'
 
 export interface IHandlerResult<T extends object = {}> {
   status: number
@@ -92,6 +93,29 @@ export function noValidatorAuthenticatedHandler(
   return authenticatedHandler(noValidator, handler)
 }
 
+type TDidDocumentPublicKey = IDidDocumentPublicKey & {ethereumAddress: string}
+type TEthDidDocument = IDidDocument & {
+  publicKey?: TDidDocumentPublicKey[]
+}
+const ethrDidDocumentTmpl = (ethAddress: string): TEthDidDocument => ({
+  '@context': 'https://w3id.org/did/v1',
+  id: `did:ethr:${ethAddress}`,
+  publicKey: [
+    {
+      id: `did:ethr:${ethAddress}#owner`,
+      type: 'Secp256k1VerificationKey2018',
+      controller: `did:ethr:${ethAddress}`,
+      ethereumAddress: ethAddress,
+    },
+  ],
+  authentication: [
+    {
+      type: 'Secp256k1SignatureAuthentication2018',
+      publicKey: `did:ethr:${ethAddress}#owner`,
+    },
+  ],
+})
+
 /**
  * DID Resolver that outputs a properly formatted did:ethr:0x... did document
  * by wrapping the functionality of ethr-did-resolver and did-resolver packages
@@ -100,34 +124,40 @@ export function noValidatorAuthenticatedHandler(
  */
 export class EthereumDIDResolver implements IDidResolver {
   public async resolve(did: string): Promise<IDidResolveResult> {
-    const ethrDidResolver = EthrDidResolver.getResolver({
-      rpcUrl: env.web3Provider(),
-      // web3: {
-      //   currentProvider: env.web3Provider(),
-      // },
-      // TODO: Should we deploy an ethr-did-registry contract for Bloom IDs?
-      // You can also set an address for your own ethr-did-registry contract
-      // registry: env.registryAddress
-    })
-    const resolver = new Resolver(ethrDidResolver)
-    const resolvedDidDocument = await resolver.resolve(did)
-    if (!resolvedDidDocument) {
+    // TODO: Decide on what to do for DID resolution...
+    // const ethrDidResolver = EthrDidResolver.getResolver({
+    //   rpcUrl: env.web3Provider(),
+    //   // TODO: Should we deploy an ethr-did-registry contract for Bloom IDs?
+    //   // You can also set an address for your own ethr-did-registry contract
+    //   // registry: env.registryAddress
+    // })
+    // const resolver = new Resolver(ethrDidResolver)
+    // const resolvedDidDocument = await resolver.resolve(did)
+    // if (!resolvedDidDocument) {
+    //   throw Error('unable to resolve did document')
+    // }
+    // const pubKeys: IDidDocumentPublicKey[] = resolvedDidDocument.publicKey.map(
+    //   p => ({
+    //     ...p,
+    //     controller: p.owner,
+    //   })
+    // )
+    // const didDocument: IDidDocument = {
+    //   id: resolvedDidDocument.id,
+    //   '@context': resolvedDidDocument['@context'],
+    //   authentication: resolvedDidDocument.authentication,
+    //   publicKey: pubKeys,
+    //   service: resolvedDidDocument.service,
+    // }
+
+    if (
+      !did.startsWith('did:ethr:') ||
+      !EthU.isValidAddress(did.replace('did:ethr:', ''))
+    ) {
       throw Error('unable to resolve did document')
     }
 
-    const pubKeys: IDidDocumentPublicKey[] = resolvedDidDocument.publicKey.map(
-      p => ({
-        ...p,
-        controller: p.owner,
-      })
-    )
-    const didDocument: IDidDocument = {
-      id: resolvedDidDocument.id,
-      '@context': resolvedDidDocument['@context'],
-      authentication: resolvedDidDocument.authentication,
-      publicKey: pubKeys,
-      service: resolvedDidDocument.service,
-    }
+    const didDocument = ethrDidDocumentTmpl(did.replace('did:ethr:', ''))
     return {
       didDocument: new DidDocument(didDocument),
     }

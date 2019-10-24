@@ -254,8 +254,7 @@ describe('Auth', async () => {
         assert.equal((await badResponse.json()).error, 'unauthorized')
       })
 
-      describe('after setting ALLOW_ANONYMOUS set to true and requesting a new token with a different key', async function() {
-        this.timeout(5000)
+      describe('after setting ALLOW_ANONYMOUS set to true and requesting a new token with a different key', async () => {
         let userAccessToken: string
         let resetResponse: Response
 
@@ -425,8 +424,6 @@ describe('Auth', async () => {
             })
             body = await response.json()
             adminAccessToken = body.token
-            console.log('TOKEN', adminAccessToken)
-
             signature = personalSign(adminAccessToken, adminPrivateKey)
           })
 

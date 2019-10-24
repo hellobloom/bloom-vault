@@ -140,6 +140,11 @@ export const dataRouter = (app: express.Application) => {
                   throw new ClientFacingError(`invalid signature for id: ${ids[i]}`)
                 }
               } catch (err) {
+                console.log('DELETE /data signature validation error')
+                console.log(err)
+                if (err instanceof ClientFacingError) {
+                  throw err
+                }
                 throw new ClientFacingError(`bad signature format for id: ${ids[i]}`)
               }
               return s
