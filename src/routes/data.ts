@@ -4,7 +4,7 @@ import {
   authenticatedHandler,
   ipRateLimited,
   noValidatorAuthenticatedHandler,
-  EthereumDidResolver,
+  EthereumDIDResolver,
 } from '../requestUtils'
 import Repo from '../repository'
 import {
@@ -26,7 +26,7 @@ export const dataRouter = (app: express.Application) => {
     apiOnly,
     noValidatorAuthenticatedHandler(async ({entity: {did}}) => {
       const entity = await Repo.getMe(did)
-      const didResolveRes = await new EthereumDidResolver().resolve(did)
+      const didResolveRes = await new EthereumDIDResolver().resolve(entity.did)
       return {
         status: 200,
         body: {

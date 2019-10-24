@@ -190,23 +190,23 @@ export default class Repo {
 
   public static async getMe(did: string) {
     const result = await pool.query(
-      `select key, data_count, deleted_count from entities where did = $1::text;`,
+      `select did, data_count, deleted_count from entities where did = $1::text;`,
       [did]
     )
     if (result.rowCount === 0) {
       throw new Error('could not find entity')
     }
-    return result.rows[0] as {data_count: number; key: Buffer; deleted_count: number}
+    return result.rows[0] as {data_count: number; did: string; deleted_count: number}
   }
 
   public static async getEntity(
     token: string
-  ): Promise<{key: Buffer; did: string; blacklisted: boolean} | null> {
+  ): Promise<{did: string; blacklisted: boolean} | null> {
     const result = await pool.query(
       `
-      select key, e.did, e.blacklisted
+      select e.did, e.blacklisted
       from entities e
-      join access_token a on e.did = a.did
+        join access_token a on e.did = a.did
       where a.uuid = $1;
     `,
       [token]
@@ -262,7 +262,6 @@ export default class Repo {
   }
 
   public static async validateAccessToken(token: string, signature: string) {
-    // , key?: Buffer | Uint8Array) {
     const ethAddress = EthU.bufferToHex(
       recoverEthAddressFromPersonalRpcSig(token, signature)
     )

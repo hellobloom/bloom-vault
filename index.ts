@@ -6,7 +6,7 @@ import {env, PipelineStages} from './src/environment'
 
 import {persistError} from './src/logger'
 
-// import {dataRouter} from './src/routes/data'
+import {dataRouter} from './src/routes/data'
 import {tokenRouter as authRouter} from './src/routes/auth'
 import {ClientFacingError} from './src/utils'
 import {adminOnlyHandler} from './src/requestUtils'
@@ -38,7 +38,7 @@ app.use((req, res, next) => {
 })
 
 authRouter(app)
-// dataRouter(app)
+dataRouter(app)
 
 if (env.pipelineStage() === PipelineStages.development) {
   app.post(

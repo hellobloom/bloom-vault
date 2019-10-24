@@ -101,7 +101,10 @@ export function noValidatorAuthenticatedHandler(
 export class EthereumDIDResolver implements IDidResolver {
   public async resolve(did: string): Promise<IDidResolveResult> {
     const ethrDidResolver = EthrDidResolver.getResolver({
-      rpcUrl: env.web3Provider,
+      rpcUrl: env.web3Provider(),
+      // web3: {
+      //   currentProvider: env.web3Provider(),
+      // },
       // TODO: Should we deploy an ethr-did-registry contract for Bloom IDs?
       // You can also set an address for your own ethr-did-registry contract
       // registry: env.registryAddress
