@@ -6,7 +6,6 @@ import {
   noValidatorAuthenticatedHandler,
 } from '../requestUtils'
 import Repo from '../repository'
-import * as openpgp from 'openpgp'
 import {
   ModelValidator,
   requiredNumber,
