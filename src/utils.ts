@@ -154,3 +154,5 @@ export function personalSign(message: string, privateKey: string) {
 
   return EthU.toRpcSig(sig.v, sig.r, sig.s)
 }
+
+export const isNotEmpty = (value: string) => value.replace(/\s+/g, '') !== ''

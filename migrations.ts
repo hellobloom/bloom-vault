@@ -12,7 +12,6 @@ const migrations: IMigration[] = [
   {
     name: 'initial',
     up: `
-      CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
       CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
       --create domain pgp_fingerprint as bytea constraint fingerprint_length check (octet_length(VALUE) = 20);
