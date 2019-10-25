@@ -94,10 +94,10 @@ export function noValidatorAuthenticatedHandler(
 }
 
 type TDidDocumentPublicKey = IDidDocumentPublicKey & {ethereumAddress: string}
-type TEthDidDocument = IDidDocument & {
+interface IEthDidDocument extends IDidDocument {
   publicKey?: TDidDocumentPublicKey[]
 }
-const ethrDidDocumentTmpl = (ethAddress: string): TEthDidDocument => ({
+const ethrDidDocumentTmpl = (ethAddress: string): IEthDidDocument => ({
   '@context': 'https://w3id.org/did/v1',
   id: `did:ethr:${ethAddress}`,
   publicKey: [
