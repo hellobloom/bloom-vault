@@ -177,11 +177,6 @@ describe('Data', () => {
       const response = await getMe(user.accessToken)
       const body = await response.json()
       assert.equal(body.did.id, user.did)
-      // TODO: I don't think this assertion is relevant any longer
-      // assert.equal(
-      //   body.pgpKeyFingerprint,
-      //   user.pgpKey.getFingerprint().toUpperCase()
-      // )
       assert.equal(body.dataCount, 0)
       assert.equal(body.deletedCount, 0)
       assert.equal(response.status, 200)
@@ -337,22 +332,12 @@ describe('Data', () => {
         assert.equal(body.deletedCount, 1)
       })
 
-      it('should return validatable deletion signatures', async () => {
+      it('should return expected deletions', async () => {
         let response = await getDeletions(secondUser.accessToken, 0, 1)
         let body = (await response.json()) as Array<{id: number; signature: string}>
         assert.equal(body.length, 2)
         assert.equal(body[0].id, start)
         assert.equal(body[1].id, end)
-
-        // TODO: Is this relevant any longer?
-        // for (const deletion of body) {
-        //   const verified = await openpgp.verify({
-        //     signature: await openpgp.signature.readArmored(deletion.signature),
-        //     message: openpgp.cleartext.fromText(dataDeletionMessage(deletion.id)),
-        //     publicKeys: [secondUser.pgpKey.toPublic()],
-        //   })
-        //   assert.equal(verified.signatures[0].valid, true)
-        // }
 
         response = await getDeletions(firstUser.accessToken, 0)
         body = await response.json()

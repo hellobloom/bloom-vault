@@ -283,18 +283,6 @@ export default class Repo {
       if (!row) {
         return null
       }
-
-      // TODO Kill this?
-      // if (key) {
-      //   const update = await client.query(
-      //     `update entities set key = $1 where did::text = $2 and key is null`,
-      //     [key, row.did]
-      //   )
-      //   if (update.rowCount !== 1) {
-      //     return null
-      //   }
-      // }
-
       return row.expires_at
     })
   }

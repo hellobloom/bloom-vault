@@ -431,22 +431,6 @@ describe('Auth', async () => {
             assert.equal(response.status, 200)
           })
 
-          // TODO: Discuss test
-          // it('should have not let the key be passed again', async () => {
-          //   const badResponse = await fetch(`${url}/auth/validate-token`, {
-          //     method: 'POST',
-          //     headers: {'Content-Type': 'application/json'},
-          //     body: JSON.stringify({
-          //       accessToken: adminAccessToken,
-          //       signature,
-          //       did: adminDid,
-          //     }),
-          //   })
-
-          //   assert.equal(badResponse.status, 401)
-          //   assert.equal((await badResponse.json()).error, 'unauthorized')
-          // })
-
           describe('after validating the second token', async () => {
             before(async () => {
               response = await fetch(`${url}/auth/validate-token`, {
