@@ -4,9 +4,9 @@ import {
   authenticatedHandler,
   ipRateLimited,
   noValidatorAuthenticatedHandler,
+  EthereumDIDResolver,
 } from '../requestUtils'
 import Repo from '../repository'
-import * as openpgp from 'openpgp'
 import {
   ModelValidator,
   requiredNumber,
@@ -15,21 +15,22 @@ import {
   udefCoalesce,
   dataDeletionMessage,
   isNotEmpty,
+  recoverEthAddressFromPersonalRpcSig,
 } from '../utils'
+import * as EthU from 'ethereumjs-util'
 
 export const dataRouter = (app: express.Application) => {
   app.get(
     '/data/me',
     ipRateLimited(60, 'me'),
     apiOnly,
-    noValidatorAuthenticatedHandler(async ({entity: {fingerprint}}) => {
-      const entity = await Repo.getMe(fingerprint)
-      const {keys} = await openpgp.key.read(entity.key)
+    noValidatorAuthenticatedHandler(async ({entity: {did}}) => {
+      const entity = await Repo.getMe(did)
+      const didResolveRes = await new EthereumDIDResolver().resolve(entity.did)
       return {
         status: 200,
         body: {
-          pgpKey: keys[0].armor(),
-          pgpKeyFingerprint: fingerprint.toString('hex').toUpperCase(),
+          did: didResolveRes.didDocument,
           dataCount: entity.data_count,
           deletedCount: entity.deleted_count,
         },
@@ -43,8 +44,8 @@ export const dataRouter = (app: express.Application) => {
       const validator = new ModelValidator(body, {end: true})
       return validator.validate({start: requiredNumber, end: optionalNumber})
     },
-    async ({entity: {fingerprint}, start, end}) => {
-      const entities = await Repo.getData(fingerprint, start, end)
+    async ({entity: {did}, start, end}) => {
+      const entities = await Repo.getData(did, start, end)
       if (entities.length === 0) return {status: 404, body: {}}
       return {
         status: 200,
@@ -90,8 +91,8 @@ export const dataRouter = (app: express.Application) => {
           },
         })
       },
-      async ({entity: {fingerprint}, id, cyphertext}) => {
-        const newId = await Repo.insertData(fingerprint, cyphertext, id)
+      async ({entity: {did}, id, cyphertext}) => {
+        const newId = await Repo.insertData(did, cyphertext, id)
         if (newId === null) throw new ClientFacingError('id not in sequence')
         return {
           status: 200,
@@ -127,47 +128,36 @@ export const dataRouter = (app: express.Application) => {
             .map(Number)
             .map(i => i + model.start)
 
-          const key = await openpgp.key.read(req.entity.key)
+          const {did} = req.entity
 
           return {
-            signatures: await Promise.all(
-              value.map(async (s, i) => {
-                let signature: openpgp.signature.Signature
-
-                try {
-                  signature = await openpgp.signature.readArmored(s)
-                  if (signature.err) {
-                    throw signature.err
-                  }
-                } catch (err) {
-                  throw new ClientFacingError(
-                    `bad signature format for id: ${ids[i]}`
-                  )
-                }
-
-                const verified = await openpgp.verify({
-                  signature,
-                  message: openpgp.cleartext.fromText(dataDeletionMessage(ids[i])),
-                  publicKeys: key.keys,
-                })
-
-                if (!verified.signatures[0].valid) {
+            signatures: value.map((s, i) => {
+              try {
+                const ethAddress = EthU.bufferToHex(
+                  recoverEthAddressFromPersonalRpcSig(dataDeletionMessage(ids[i]), s)
+                )
+                if (ethAddress !== did.replace('did:ethr:', '')) {
                   throw new ClientFacingError(`invalid signature for id: ${ids[i]}`)
                 }
-
-                const stream = signature.packets.write()
-                return await openpgp.stream.readToEnd(stream)
-              })
-            ),
+              } catch (err) {
+                console.log('DELETE /data signature validation error')
+                console.log(err)
+                if (err instanceof ClientFacingError) {
+                  throw err
+                }
+                throw new ClientFacingError(`bad signature format for id: ${ids[i]}`)
+              }
+              return s
+            }),
             ids,
           }
         },
       })
     },
-    async ({entity: {fingerprint}, signatures: {signatures, ids}}) => {
+    async ({entity: {did}, signatures: {signatures, ids}}) => {
       return {
         status: 200,
-        body: await Repo.deleteData(fingerprint, ids, signatures),
+        body: await Repo.deleteData(did, ids, signatures),
       }
     }
   )
@@ -191,22 +181,16 @@ export const dataRouter = (app: express.Application) => {
       )
       return validator.validate({start: requiredNumber, end: optionalNumber})
     },
-    async ({entity: {fingerprint}, start, end}) => {
-      const result = await Repo.getDeletions(fingerprint, start, end)
+    async ({entity: {did}, start, end}) => {
+      const result = await Repo.getDeletions(did, start, end)
       return {
         status: 200,
-        body: await Promise.all(
-          result.map(async r => {
-            let signature: string | null = null
-            if (r.signature) {
-              signature = (await openpgp.signature.read(r.signature)).armor()
-            }
-            return {
-              id: r.data_id,
-              signature,
-            }
-          })
-        ),
+        body: result.map(r => {
+          return {
+            id: r.data_id,
+            signature: r.signature,
+          }
+        }),
       }
     }
   )

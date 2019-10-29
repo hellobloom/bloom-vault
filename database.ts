@@ -3,13 +3,6 @@ import * as fs from 'fs'
 
 const ca = '/run/secrets/pg_ca'
 
-console.log(
-  'process.env.POSTGRES_',
-  Object.keys(process.env)
-    .filter(x => x.indexOf('POSTGRES_') === 0)
-    .map(x => [x, process.env[x]])
-)
-
 export const production = {
   user: udefCoalesce(process.env.POSTGRES_USER, 'postgres'),
   password: process.env.POSTGRES_PASSWORD,

@@ -5,12 +5,9 @@ import fetch, {Response} from 'node-fetch'
 import {Client} from 'pg'
 import {up, down} from '../migrations'
 import * as db from '../database'
-import * as openpgp from 'openpgp'
-import {dataDeletionMessage, udefCoalesce} from '../src/utils'
-import {env} from '../src/environment'
+import {dataDeletionMessage, udefCoalesce, personalSign} from '../src/utils'
 import {ByteSource} from 'aes-js'
 import {pseudoRandomKey, encryptAES, decryptAES} from './utls/aes'
-const aesjs = require('aes-js')
 
 const url = 'http://localhost:3001'
 
@@ -20,7 +17,8 @@ interface IData {
 }
 
 interface IUser {
-  pgpKey: openpgp.key.Key
+  privateKey: string
+  did: string
   aesKey: ByteSource
   data: IData[]
   accessToken: string
@@ -29,12 +27,14 @@ interface IUser {
 describe('Data', () => {
   let client: Client
   let users: IUser[]
+  let firstUserAddress: string
   let firstUser: IUser
+  let secondUserAddress: string
   let secondUser: IUser
 
   async function requestToken(user: IUser, initialize: boolean = false) {
     const response = await fetch(
-      `${url}/auth/request-token?fingerprint=${user.pgpKey.getFingerprint()}&initialize=${initialize}`,
+      `${url}/auth/request-token?did=${user.did}&initialize=${initialize}`,
       {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -50,12 +50,8 @@ describe('Data', () => {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         accessToken: user.accessToken,
-        signature: (await openpgp.sign({
-          message: openpgp.cleartext.fromText(user.accessToken),
-          privateKeys: [user.pgpKey],
-          detached: true,
-        })).signature,
-        pgpKey: user.pgpKey.toPublic().armor(),
+        signature: personalSign(user.accessToken, user.privateKey),
+        did: user.did,
       }),
     })
   }
@@ -121,22 +117,23 @@ describe('Data', () => {
     await down(db.mocha, false)
     await up(db.mocha, false)
 
-    // PGP Key Generation
+    // User setup
+
+    firstUserAddress = '0xba35e4f63bce9047464671fcbadbae41509c4b8e'
     firstUser = {
-      pgpKey: (await openpgp.generateKey({
-        userIds: [{name: 'Jon Smith'}],
-        curve: 'curve25519',
-      })).key,
+      privateKey:
+        '0x6fba3824f0d7fced2db63907faeaa6ffae283c3bf94072e0a3b2940b2b572b65',
+      did: `did:ethr:${firstUserAddress}`,
       aesKey: pseudoRandomKey(),
       data: [{id: 0, text: 'user0data0'}, {id: 1, text: 'user0data1'}],
       accessToken: '',
     }
 
+    secondUserAddress = '0x33fc5b05705b91053e157bc2b2203f17f532f606'
     secondUser = {
-      pgpKey: (await openpgp.generateKey({
-        userIds: [{name: 'Jon Doe'}],
-        curve: 'curve25519',
-      })).key,
+      privateKey:
+        '0x57db064025480c5c131d4978dcaea1a47246ad33b7c45cf757eac37db1bbe20e',
+      did: `did:ethr:${secondUserAddress}`,
       aesKey: pseudoRandomKey(),
       data: [
         {id: 0, text: 'user1data0'},
@@ -175,15 +172,11 @@ describe('Data', () => {
     await client.end()
   })
 
-  it('should return the pgp key and 0 for the data and deleted count', async () => {
+  it('should return the did and 0 for the data and deleted count', async () => {
     for (const user of users) {
       const response = await getMe(user.accessToken)
       const body = await response.json()
-      assert.equal(body.pgpKey, user.pgpKey.toPublic().armor())
-      assert.equal(
-        body.pgpKeyFingerprint,
-        user.pgpKey.getFingerprint().toUpperCase()
-      )
+      assert.equal(body.did.id, user.did)
       assert.equal(body.dataCount, 0)
       assert.equal(body.deletedCount, 0)
       assert.equal(response.status, 200)
@@ -295,11 +288,7 @@ describe('Data', () => {
     it('should not let a bad signature be used to delete', async () => {
       const id = 0
       const signatures = [
-        (await openpgp.sign({
-          message: openpgp.cleartext.fromText(dataDeletionMessage(id + 1)),
-          privateKeys: [secondUser.pgpKey],
-          detached: true,
-        })).signature as string,
+        personalSign(dataDeletionMessage(id + 1), secondUser.privateKey),
       ]
 
       const response = await deleteData(secondUser.accessToken, id, {signatures})
@@ -321,11 +310,7 @@ describe('Data', () => {
         end = secondUser.data.length - 1
         const signatures = await Promise.all(
           [start, end].map(async id => {
-            return (await openpgp.sign({
-              message: openpgp.cleartext.fromText(dataDeletionMessage(id)),
-              privateKeys: [secondUser.pgpKey],
-              detached: true,
-            })).signature as string
+            return personalSign(dataDeletionMessage(id), secondUser.privateKey)
           })
         )
 
@@ -347,21 +332,12 @@ describe('Data', () => {
         assert.equal(body.deletedCount, 1)
       })
 
-      it('should return validatable deletion signatures', async () => {
+      it('should return expected deletions', async () => {
         let response = await getDeletions(secondUser.accessToken, 0, 1)
         let body = (await response.json()) as Array<{id: number; signature: string}>
         assert.equal(body.length, 2)
         assert.equal(body[0].id, start)
         assert.equal(body[1].id, end)
-
-        for (const deletion of body) {
-          const verified = await openpgp.verify({
-            signature: await openpgp.signature.readArmored(deletion.signature),
-            message: openpgp.cleartext.fromText(dataDeletionMessage(deletion.id)),
-            publicKeys: [secondUser.pgpKey.toPublic()],
-          })
-          assert.equal(verified.signatures[0].valid, true)
-        }
 
         response = await getDeletions(firstUser.accessToken, 0)
         body = await response.json()

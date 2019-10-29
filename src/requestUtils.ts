@@ -8,6 +8,14 @@ import Repo, {IEntity} from './repository'
 import regularExpressions from './regularExpressions'
 import {env} from './environment'
 import {ClientFacingError} from './utils'
+import {
+  IDidResolver,
+  IDidResolveResult,
+  DidDocument,
+  IDidDocument,
+  IDidDocumentPublicKey,
+} from '@decentralized-identity/did-common-typescript'
+import * as EthU from 'ethereumjs-util'
 
 export interface IHandlerResult<T extends object = {}> {
   status: number
@@ -68,7 +76,7 @@ export function adminOnlyHandler<T>(
   handler: (parameters: T & {entity: IEntity}) => Promise<IHandlerResult>
 ) {
   return authenticatedHandler(validator, async params => {
-    if (!(await Repo.isAdmin(params.entity.fingerprint))) {
+    if (!(await Repo.isAdmin(params.entity.did))) {
       throw new ClientFacingError('unauthorized', 401)
     }
     return handler(params)
@@ -83,16 +91,61 @@ export function noValidatorAuthenticatedHandler(
   return authenticatedHandler(noValidator, handler)
 }
 
-export async function fingerprintValidator(name: string, fingerprint: string) {
-  const fingerprintRegExps = regularExpressions.auth.fingerprint
-  fingerprint = fingerprint.replace(fingerprintRegExps.hyphen, '')
-  fingerprint = fingerprint.replace(fingerprintRegExps.colon, '')
-  fingerprint = fingerprint.replace('0x', '')
-  const match = fingerprintRegExps.chars.exec(fingerprint)
-  if (!match) {
+type TDidDocumentPublicKey = IDidDocumentPublicKey & {ethereumAddress: string}
+interface IEthDidDocument extends IDidDocument {
+  publicKey?: TDidDocumentPublicKey[]
+}
+const ethrDidDocumentTmpl = (ethAddress: string): IEthDidDocument => ({
+  '@context': 'https://w3id.org/did/v1',
+  id: `did:ethr:${ethAddress}`,
+  publicKey: [
+    {
+      id: `did:ethr:${ethAddress}#owner`,
+      type: 'Secp256k1VerificationKey2018',
+      controller: `did:ethr:${ethAddress}`,
+      ethereumAddress: ethAddress,
+    },
+  ],
+  authentication: [
+    {
+      type: 'Secp256k1SignatureAuthentication2018',
+      publicKey: `did:ethr:${ethAddress}#owner`,
+    },
+  ],
+})
+
+/**
+ * Simplified "resolver", that just uses a template to avoid unnecessary performance issues.
+ */
+export class EthereumDIDResolver implements IDidResolver {
+  public async resolve(did: string): Promise<IDidResolveResult> {
+    if (
+      !did.startsWith('did:ethr:') ||
+      !EthU.isValidAddress(did.replace('did:ethr:', ''))
+    ) {
+      throw Error('unable to resolve did document')
+    }
+
+    const didDocument = ethrDidDocumentTmpl(did.replace('did:ethr:', ''))
+    return {
+      didDocument: new DidDocument(didDocument),
+    }
+  }
+}
+
+/**
+ * Validates dids by resolving to a did document.
+ * Supported formats:
+ * - did:ethr:0x...
+ */
+export async function didValidator(name: string, did: string) {
+  try {
+    const {didDocument} = await new EthereumDIDResolver().resolve(did)
+    return didDocument.id
+  } catch (err) {
+    console.log(`didValidator error: ${err}`)
     throw new ClientFacingError(`bad ${name} format`)
   }
-  return fingerprint
 }
 
 export const apiOnly: RequestHandler = (req, res, next) => {

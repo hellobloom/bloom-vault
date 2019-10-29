@@ -16,10 +16,12 @@
   },
   "license": "UNLICENSED",
   "dependencies": {
+    "@decentralized-identity/did-common-typescript": "^0.1.19",
     "body-parser": "^1.18.3",
+    "ethereumjs-util": "^6.1.0",
+    "ethereumjs-wallet": "^0.6.3",
     "express": "^4.16.3",
     "helmet": "^3.21.1",
-    "openpgp": "^4.4.5",
     "pg": "^7.8.0"
   },
   "devDependencies": {
