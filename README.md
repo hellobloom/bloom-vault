@@ -6,7 +6,6 @@
 ## Running debug mode
 
 - install node if you havent already ([version 10 recommended](https://nodejs.org/dist/v10.15.1/)) \*if you have nvm run `nvm use`
-- Update the WEB3_PROVIDER value in .env.debug
 
 ```
 npm install
