@@ -148,19 +148,19 @@ describe('Auth', async () => {
     })
 
     // TODO: Discuss test
-    // it('should return 401 if no did is passed for a new entity', async () => {
-    //   const badResponse = await fetch(`${url}/auth/validate-token`, {
-    //     method: 'POST',
-    //     headers: {'Content-Type': 'application/json'},
-    //     body: JSON.stringify({
-    //       accessToken: adminAccessToken,
-    //       signature,
-    //     }),
-    //   })
+    it('should return 400 if no did is passed for validate-token', async () => {
+      const badResponse = await fetch(`${url}/auth/validate-token`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          accessToken: adminAccessToken,
+          signature,
+        }),
+      })
 
-    //   assert.equal(badResponse.status, 401)
-    //   assert.equal((await badResponse.json()).error, 'unauthorized')
-    // })
+      assert.equal(badResponse.status, 400)
+      assert.equal((await badResponse.json()).error, 'missing did')
+    })
 
     it('should return 401 if signature is invalid', async () => {
       const badSignature = personalSign(
