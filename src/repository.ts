@@ -93,6 +93,7 @@ export default class Repo {
     return query.slice(0, -1)
   }
 
+  // TODO: update
   public static async deleteData(did: string, ids: number[], signatures: string[]) {
     return this.transaction(async client => {
       const newDeletions = await client.query(
@@ -138,11 +139,17 @@ export default class Repo {
     })
   }
 
-  public static async insertData(
-    did: string,
-    cyphertext: Buffer | Uint8Array,
+  public static async insertData({
+    did,
+    cyphertext,
+    id,
+    cypherindex,
+  }: {
+    did: string
+    cyphertext: Buffer | Uint8Array
     id?: number
-  ) {
+    cypherindex: Buffer | null
+  }) {
     return this.transaction(async client => {
       const result = await client.query(
         `
@@ -160,16 +167,25 @@ export default class Repo {
 
       await client.query(
         `
-          insert into data
-          (did  ,id  ,cyphertext) values
-          ($1           ,$2  ,$3);
+          insert into data (
+            did,
+            id,
+            cyphertext,
+            cypherindex
+          ) values (
+            $1,
+            $2,
+            $3,
+            $4
+          );
         `,
-        [did, newId, cyphertext]
+        [did, newId, cyphertext, cypherindex]
       )
       return newId
     })
   }
 
+  // TODO: update
   public static async getData(did: string, start: number, end?: number) {
     const result = await pool.query(
       `
