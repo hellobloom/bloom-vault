@@ -7,7 +7,7 @@ import {up, down} from '../migrations'
 import * as db from '../database'
 import {env} from '../src/environment'
 import {personalSign} from '../src/utils'
-const uuid = require('uuidv4')
+import uuidv4 from 'uuidv4'
 
 const url = 'http://localhost:3001'
 
@@ -137,7 +137,7 @@ describe('Auth', async () => {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-          accessToken: uuid(),
+          accessToken: uuidv4(),
           signature,
           did: adminDid,
         }),
@@ -463,7 +463,7 @@ describe('Auth', async () => {
               const badResponse = await fetch(`${url}/data/me`, {
                 headers: {
                   'Content-Type': 'application/json',
-                  Authorization: `Bearer ${uuid()}`,
+                  Authorization: `Bearer ${uuidv4()}`,
                 },
               })
 

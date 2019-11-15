@@ -40,12 +40,31 @@ export const dataRouter = (app: express.Application) => {
 
   const getData = authenticatedHandler(
     async (req, res, next) => {
-      const body = req.params as {start: number; end: number | undefined}
-      const validator = new ModelValidator(body, {end: true})
-      return validator.validate({start: requiredNumber, end: optionalNumber})
+      const body = req.params as {
+        start: number
+        end: number | undefined
+      }
+      const queryParams = req.query as {
+        cypherindex?: string
+      }
+      const validator = new ModelValidator(
+        {...body, ...queryParams},
+        {end: true, cypherindex: true}
+      )
+      return validator.validate({
+        start: requiredNumber,
+        end: optionalNumber,
+        cypherindex: (_name, value) => {
+          if (value && typeof value === 'string' && isNotEmpty(value)) {
+            return Buffer.from(value)
+          } else {
+            return null
+          }
+        },
+      })
     },
-    async ({entity: {did}, start, end}) => {
-      const entities = await Repo.getData(did, start, end) // TODO: update
+    async ({entity: {did}, start, end, cypherindex}) => {
+      const entities = await Repo.getData({did, start, end, cypherindex})
       if (entities.length === 0) return {status: 404, body: {}}
       return {
         status: 200,
@@ -80,7 +99,7 @@ export const dataRouter = (app: express.Application) => {
           cyphertext: string
           cypherindex: string
         }
-        const validator = new ModelValidator(body, {id: true})
+        const validator = new ModelValidator(body, {id: true, cypherindex: true})
         return validator.validate({
           id: optionalNumber,
           cyphertext: (name, value) => {

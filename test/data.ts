@@ -7,19 +7,22 @@ import {up, down} from '../migrations'
 import * as db from '../database'
 import {dataDeletionMessage, udefCoalesce, personalSign} from '../src/utils'
 import {ByteSource} from 'aes-js'
-import {pseudoRandomKey, encryptAES, decryptAES} from './utls/aes'
+import {getRandomKey, encryptAES, decryptAES} from './utls/aes'
+import uuidv4 from 'uuidv4'
 
 const url = 'http://localhost:3001'
 
 interface IData {
   id: number
   text: string
+  type?: string
 }
 
 interface IUser {
   privateKey: string
   did: string
   aesKey: ByteSource
+  indexNonce: string
   data: IData[]
   accessToken: string
 }
@@ -65,8 +68,22 @@ describe('Data', () => {
     })
   }
 
-  async function getData(token: string, start: number, end?: number) {
-    return fetch(`${url}/data/${start}/${udefCoalesce(end, '')}`, {
+  async function getData({
+    token,
+    start,
+    end,
+    cypherindex,
+  }: {
+    token: string
+    start: number
+    end?: number
+    cypherindex?: string
+  }) {
+    const queryParams = (cypherindex
+      ? `?cypherindex=${encodeURIComponent(cypherindex)}`
+      : ''
+    ).trim()
+    return fetch(`${url}/data/${start}/${udefCoalesce(end, '')}${queryParams}`, {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
@@ -74,10 +91,20 @@ describe('Data', () => {
     })
   }
 
-  async function postData(token: string, cyphertext: string, id?: number) {
+  async function postData({
+    token,
+    cyphertext,
+    id,
+    cypherindex,
+  }: {
+    token: string
+    cyphertext: string
+    id?: number
+    cypherindex?: string
+  }) {
     return fetch(`${url}/data`, {
       method: 'POST',
-      body: JSON.stringify({id, cyphertext}),
+      body: JSON.stringify({id, cyphertext, cypherindex}),
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
@@ -124,8 +151,14 @@ describe('Data', () => {
       privateKey:
         '0x6fba3824f0d7fced2db63907faeaa6ffae283c3bf94072e0a3b2940b2b572b65',
       did: `did:ethr:${firstUserAddress}`,
-      aesKey: pseudoRandomKey(),
-      data: [{id: 0, text: 'user0data0'}, {id: 1, text: 'user0data1'}],
+      aesKey: getRandomKey(),
+      indexNonce: `${uuidv4()}:${uuidv4()}`,
+      data: [
+        {id: 0, text: 'user1data0'},
+        {id: 1, text: 'user1data1'},
+        {id: 2, text: 'user1data2', type: 'user1data2-type-1'},
+        {id: 3, text: 'user1data3', type: 'user1data3-type-2'},
+      ],
       accessToken: '',
     }
 
@@ -134,11 +167,13 @@ describe('Data', () => {
       privateKey:
         '0x57db064025480c5c131d4978dcaea1a47246ad33b7c45cf757eac37db1bbe20e',
       did: `did:ethr:${secondUserAddress}`,
-      aesKey: pseudoRandomKey(),
+      aesKey: getRandomKey(),
+      indexNonce: `${uuidv4()}:${uuidv4()}`,
       data: [
-        {id: 0, text: 'user1data0'},
-        {id: 1, text: 'user1data1'},
-        {id: 2, text: 'user1data2'},
+        {id: 0, text: 'user2data0'},
+        {id: 1, text: 'user2data1'},
+        {id: 2, text: 'user2data2'},
+        {id: 3, text: 'user2data3', type: 'user2data3-type'},
       ],
       accessToken: '',
     }
@@ -206,13 +241,28 @@ describe('Data', () => {
         for (const data of user.data) {
           const plaintext = JSON.stringify(data)
           const message = encryptAES(plaintext, user.aesKey)
+          const getCypherIndex = () => {
+            if (typeof data.type === 'undefined') {
+              return undefined
+            }
+            const plaintextIndex = JSON.stringify({
+              nonce: user.indexNonce,
+              type: data.type,
+            })
+            const cypherindex = encryptAES(plaintextIndex, user.aesKey)
+            return cypherindex
+          }
 
           // only specify the id sometimes to test with or without it
-          const response = await postData(
-            user.accessToken,
-            message,
-            data.id % 2 === 0 ? data.id : undefined
-          )
+          const requestData = {
+            token: user.accessToken,
+            cyphertext: message,
+            id: data.id % 2 === 0 ? data.id : undefined,
+            cypherindex: getCypherIndex(),
+          }
+          // console.log({requestData})
+          const response = await postData(requestData)
+          // console.log({response})
         }
       }
     })
@@ -227,11 +277,11 @@ describe('Data', () => {
     })
 
     it('can verify the returned data', async () => {
-      const response = await getData(
-        firstUser.accessToken,
-        0,
-        firstUser.data.length - 1
-      )
+      const response = await getData({
+        token: firstUser.accessToken,
+        start: 0,
+        end: firstUser.data.length - 1,
+      })
       const body = await response.json()
       assert.equal(body[0].id, 0)
       assert.equal(body.length, firstUser.data.length)
@@ -241,12 +291,37 @@ describe('Data', () => {
       assert.equal(data.text, firstUser.data[0].text)
     })
 
+    it('can retrieve data by index and verify it', async () => {
+      const indexedData = firstUser.data
+        .filter(d => typeof d.type !== 'undefined')
+        .sort(d => d.id)
+
+      for (const d of indexedData) {
+        const plaintextIndex = JSON.stringify({
+          nonce: firstUser.indexNonce,
+          type: d.type,
+        })
+        const cypherindex = encryptAES(plaintextIndex, firstUser.aesKey)
+        const response = await getData({
+          token: firstUser.accessToken,
+          start: d.id,
+          cypherindex,
+        })
+
+        const body = await response.json()
+        const decrypted = await decryptAES(body[0].cyphertext, firstUser.aesKey)
+        const data = JSON.parse(decrypted) as IData
+        assert.equal(data.id, d.id)
+        assert.equal(data.text, d.text)
+      }
+    })
+
     it('can get a range of data in order', async () => {
-      const response = await getData(
-        secondUser.accessToken,
-        secondUser.data.length - 2,
-        secondUser.data.length - 1
-      )
+      const response = await getData({
+        token: secondUser.accessToken,
+        start: secondUser.data.length - 2,
+        end: secondUser.data.length - 1,
+      })
       const body = (await response.json()) as Array<{id: number; cyphertext: string}>
       assert.equal(body.length, 2)
       body.forEach(async (blob, i) => {
@@ -259,18 +334,21 @@ describe('Data', () => {
     })
 
     it('should return 404 if the data does not exist', async () => {
-      const response = await getData(firstUser.accessToken, firstUser.data.length)
+      const response = await getData({
+        token: firstUser.accessToken,
+        start: firstUser.data.length,
+      })
       assert.equal(response.status, 404)
     })
 
     it('cannot insert data out of order', async () => {
       const message = encryptAES('test', firstUser.aesKey)
 
-      const response = await postData(
-        firstUser.accessToken,
-        message,
-        firstUser.data.length + 1
-      )
+      const response = await postData({
+        token: firstUser.accessToken,
+        cyphertext: message,
+        id: firstUser.data.length + 1,
+      })
       const body = await response.json()
       assert.equal(response.status, 400)
       assert.equal(body.error, 'id not in sequence')
@@ -346,13 +424,13 @@ describe('Data', () => {
       })
 
       it('should return null for the data', async () => {
-        let response = await getData(secondUser.accessToken, start, end)
+        let response = await getData({token: secondUser.accessToken, start, end})
         let body = (await response.json()) as Array<{id: number; cyphertext: string}>
         assert.equal(body.length, 2)
         assert.equal(body[0].cyphertext, null)
         assert.equal(body[1].cyphertext, null)
 
-        response = await getData(firstUser.accessToken, 0)
+        response = await getData({token: firstUser.accessToken, start: 0})
         body = await response.json()
         assert.equal(body.length, 1)
         assert.equal(body[0].cyphertext, null)

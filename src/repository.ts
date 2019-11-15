@@ -185,23 +185,38 @@ export default class Repo {
     })
   }
 
-  // TODO: update
-  public static async getData(did: string, start: number, end?: number) {
-    const result = await pool.query(
-      `
+  public static async getData({
+    did,
+    start,
+    end,
+    cypherindex,
+  }: {
+    did: string
+    start: number
+    end?: number
+    cypherindex?: Buffer | null
+  }) {
+    try {
+      const result = await pool.query(
+        `
         select id, cyphertext
         from data
         where 1=1
           and id >= $2 and id <= coalesce($3::integer, $2)
           and did = $1::text
+          and coalesce($4, null) is null OR cypherindex = $4::bytea
         order by id;
       `,
-      [did, start, udefCoalesce(end, null)]
-    )
-    return result.rows as Array<{
-      id: number
-      cyphertext: Buffer | null
-    }>
+        [did, start, udefCoalesce(end, null), udefCoalesce(cypherindex, null)]
+      )
+      return result.rows as Array<{
+        id: number
+        cyphertext: Buffer | null
+      }>
+    } catch (err) {
+      console.log({err})
+      throw err
+    }
   }
 
   public static async getMe(did: string) {
