@@ -187,7 +187,7 @@ export const dataRouter = (app: express.Application) => {
     async ({entity: {did}, signatures: {signatures, ids}}) => {
       return {
         status: 200,
-        body: await Repo.deleteData(did, ids, signatures), // TODO: update
+        body: await Repo.deleteData(did, ids, signatures),
       }
     }
   )

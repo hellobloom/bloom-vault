@@ -93,7 +93,6 @@ export default class Repo {
     return query.slice(0, -1)
   }
 
-  // TODO: update
   public static async deleteData(did: string, ids: number[], signatures: string[]) {
     return this.transaction(async client => {
       const newDeletions = await client.query(
