@@ -45,7 +45,7 @@ export const dataRouter = (app: express.Application) => {
       return validator.validate({start: requiredNumber, end: optionalNumber})
     },
     async ({entity: {did}, start, end}) => {
-      const entities = await Repo.getData(did, start, end)
+      const entities = await Repo.getData(did, start, end) // TODO: update
       if (entities.length === 0) return {status: 404, body: {}}
       return {
         status: 200,
@@ -75,11 +75,15 @@ export const dataRouter = (app: express.Application) => {
     apiOnly,
     authenticatedHandler(
       async (req, res, next) => {
-        const body = req.body as {id: number | undefined; cyphertext: string}
+        const body = req.body as {
+          id: number | undefined
+          cyphertext: string
+          cypherindex: string
+        }
         const validator = new ModelValidator(body, {id: true})
         return validator.validate({
           id: optionalNumber,
-          cyphertext: async (name, value) => {
+          cyphertext: (name, value) => {
             try {
               if (!isNotEmpty(value)) {
                 throw new Error(`cyphertext cannot be empty`)
@@ -89,10 +93,17 @@ export const dataRouter = (app: express.Application) => {
               throw new ClientFacingError(`bad ${name} format`)
             }
           },
+          cypherindex: (_name, value) => {
+            if (value && typeof value === 'string' && isNotEmpty(value)) {
+              return Buffer.from(value)
+            } else {
+              return null
+            }
+          },
         })
       },
-      async ({entity: {did}, id, cyphertext}) => {
-        const newId = await Repo.insertData(did, cyphertext, id)
+      async ({entity: {did}, id, cyphertext, cypherindex}) => {
+        const newId = await Repo.insertData({did, cyphertext, id, cypherindex})
         if (newId === null) throw new ClientFacingError('id not in sequence')
         return {
           status: 200,
@@ -157,7 +168,7 @@ export const dataRouter = (app: express.Application) => {
     async ({entity: {did}, signatures: {signatures, ids}}) => {
       return {
         status: 200,
-        body: await Repo.deleteData(did, ids, signatures),
+        body: await Repo.deleteData(did, ids, signatures), // TODO: update
       }
     }
   )
