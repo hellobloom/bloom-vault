@@ -39,6 +39,29 @@ pipeline {
         )
       }
     }
+    stage('ci'){
+      parallel {
+        stage('test'){
+          steps {
+            slackSend (
+              message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Tests...",
+              color: "#6067f1"
+            )
+            script {
+              sh """
+                docker run --env-file /srv/jenkins/vault/.env.docker hellobloom/bloom-vault:${env.GIT_REF} 'npm run migrate'
+                docker run --env-file /srv/jenkins/vault/.env.docker hellobloom/bloom-vault:${env.GIT_REF} 'npm run start'
+                docker run --env-file /srv/jenkins/vault/.env.docker hellobloom/bloom-vault:${env.GIT_REF} 'npm run test'
+              """
+            }
+            slackSend (
+              message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Tests finished",
+              color: "#00e981"
+            )
+          }
+        }
+      }
+    }
     stage('publish') {
       steps {
         slackSend (
