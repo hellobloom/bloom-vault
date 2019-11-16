@@ -1,2 +1,2 @@
 #!/bin/bash
-npm run docker-debug
+npm run migrate && npm run debug
