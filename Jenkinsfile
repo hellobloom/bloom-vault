@@ -49,8 +49,7 @@ pipeline {
             )
             script {
               sh """
-                docker run --env-file /srv/jenkins/vault/.env.docker hellobloom/bloom-vault:${env.GIT_REF} '/app/bin/debug.sh'
-                docker run --env-file /srv/jenkins/vault/.env.docker hellobloom/bloom-vault:${env.GIT_REF} '/app/bin/test.sh'
+              bin/test.sh
               """
             }
             slackSend (
