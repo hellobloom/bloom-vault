@@ -19,8 +19,8 @@ export const mocha = {
   database: udefCoalesce(process.env.POSTGRES_DATABASE, 'debug'),
 }
 export const development = {
-  user: 'postgres',
+  user: udefCoalesce(process.env.POSTGRES_USER, 'postgres'),
   password: process.env.POSTGRES_PASSWORD,
-  host: 'debugdb',
-  database: 'debug',
+  host: udefCoalesce(process.env.POSTGRES_HOST, 'debugdb'),
+  database: udefCoalesce(process.env.POSTGRES_DATABASE, 'debug'),
 }
