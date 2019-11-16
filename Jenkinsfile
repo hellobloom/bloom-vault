@@ -1,0 +1,71 @@
+node {
+  SSH_KEY = sh(returnStdout: true, script: 'cat /srv/jenkins/ssh_key')
+  NPMRC = sh(returnStdout: true, script: 'cat /srv/jenkins/npmrc')
+}
+
+pipeline {
+  environment {
+    credentialsId = 'docker-hub-credentials'
+  }
+
+  agent any
+
+  stages {
+    stage('checkout') {
+        steps {
+          checkout scm
+          script {
+            env.GIT_BRANCH_NAME=sh(returnStdout: true, script: "git rev-parse --abbrev-ref HEAD").trim()
+            env.GIT_REF=sh(returnStdout: true, script: "git rev-parse HEAD").trim()
+          }
+        }
+    }
+    stage('build') {
+      steps {
+        slackSend (
+          message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Building: ${env.BUILD_URL}display/redirect",
+          color: "#6067f1"
+        )
+        script {
+          docker.withRegistry('', credentialsId) {
+            sh """
+            docker build -f Dockerfile . --build-arg SSH_KEY="$SSH_KEY" --build-arg NPMRC='$NPMRC' -t hellobloom/bloom-vault:${env.GIT_REF}
+            """
+          }
+        }
+        slackSend (
+          message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Finished build",
+          color: "#00e981"
+        )
+      }
+    }
+    stage('publish') {
+      steps {
+        slackSend (
+          message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Publishing...",
+          color: "#6067f1"
+        )
+        script {
+          docker.withRegistry('', credentialsId) {
+            sh """
+            docker push hellobloom/bloom-vault:${env.GIT_REF}
+            """
+          }
+        }
+        slackSend (
+          message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Publish finished! ${env.BUILD_URL}display/redirect",
+          color: "#ea8afb"
+        )
+      }
+    }
+  }
+
+  post {
+    unsuccessful {
+      slackSend (
+        message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Unsuccessful ${env.BUILD_URL}display/redirect",
+        color: "#c13801"
+      )
+    }
+  }
+}
