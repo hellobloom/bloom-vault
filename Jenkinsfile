@@ -58,6 +58,41 @@ pipeline {
             )
           }
         }
+        stage('prettier'){
+          steps {
+            slackSend (
+              message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Prettier...",
+              color: "#6067f1"
+            )
+            echo 'Running prettier...'
+            script {
+              sh """
+                bin/prettier.sh
+              """
+            }
+            slackSend (
+              message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Prettier finished",
+              color: "#00e981"
+            )
+          }
+        }
+        stage('tslint'){
+          steps {
+            slackSend (
+              message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Tslint...",
+              color: "#6067f1"
+            )
+            script {
+              sh """
+                bin/tslint.sh
+              """
+            }
+            slackSend (
+              message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Tslint finished",
+              color: "00e981"
+            )
+          }
+        }
       }
     }
     stage('publish') {
