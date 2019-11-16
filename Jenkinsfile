@@ -39,8 +39,8 @@ pipeline {
         )
       }
     }
-    stage('ci'){
-      steps{
+    stage('deps') {
+      steps {
         slackSend (
           message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Installing dependencies...",
           color: "#6067f1"
@@ -55,6 +55,8 @@ pipeline {
           color: "#00e981"
         )
       }
+    }
+    stage('ci'){
       parallel {
         stage('test'){
           steps {
