@@ -12,7 +12,7 @@ export const production = {
   ssl: fs.existsSync(ca) ? {ca: fs.readFileSync(ca)} : undefined,
 }
 export const mocha = {
-  user: 'postgres',
+  user: udefCoalesce(process.env.POSTGRES_USER, 'postgres'),
   password: process.env.POSTGRES_PASSWORD,
   host: 'localhost',
   port: 5434,

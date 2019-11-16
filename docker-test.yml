@@ -23,4 +23,5 @@ services:
     volumes:
       - ./build:/app/build
 
-volumes: debugdata:
+volumes:
+  debugdata:
