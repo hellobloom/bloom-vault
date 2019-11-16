@@ -60,17 +60,17 @@ Example response (aplication/json):
 Validates an access token for the requested pgp key fingerprint. The access token and a valid **detached** pgp signature of the token must be submitted for the token to be marked as validated. Once validated the token can be used until it is expired. The first time validating an access token for a given fingerprint the client must also send a pgp public key with the request. To prevent leaking information about which key fingerprints have data stored in the registry and to mitigate possible future fingerprint preimage attacks the registry will process requests in this way.
 
 1. Lookup pending access token and linked entity by the posted access token uuid
-    1. If none are found return 404
+   1. If none are found return 404
 2. If the request does not contain a pgp key
-    1. Verify a pgp key exists for the entity and the posted signature is valid against that key
-        1. If either is false return 401
-        2. Else authorize the token and return it
+   1. Verify a pgp key exists for the entity and the posted signature is valid against that key
+      1. If either is false return 401
+      2. Else authorize the token and return it
 3. Else if it does contain a pgp key
-    1. Verify that a pgp key does not already exist for the entity
-        1. If it does return 401
-    2. Verify the posted signature is valid against the posted key and token uuid
-        1. if it is not valid return 401
-        2. Store the new pgp key on the entity and authorize/return the access token
+   1. Verify that a pgp key does not already exist for the entity
+      1. If it does return 401
+   2. Verify the posted signature is valid against the posted key and token uuid
+      1. if it is not valid return 401
+      2. Store the new pgp key on the entity and authorize/return the access token
 
 Example POST body (application/json):
 
@@ -111,7 +111,7 @@ Javascript example:
 
 ## GET /data/me
 
-Returns the entity object associated with the included access token without the data blobs. 
+Returns the entity object associated with the included access token without the data blobs.
 
 Example response (aplication/json):
 
@@ -197,7 +197,7 @@ Example response (aplication/json):
 
 **GET /deletions/:start/:end**
 
-Returns the ids of the data blobs deleted between the **i***th* and **j***th* deletion inclusive. j is optional
+Returns the ids of the data blobs deleted between the **i\***th\* and **j\***th\* deletion inclusive. j is optional
 
 Example GET url:
 
@@ -236,7 +236,7 @@ A typical scenario might be as follows:
 # Security Recommendations
 
 1. When posting new data:
-    1. Make use of the "id" request parameter to prevent replay attacks and duplicated data.
-    2. Sign **and** encrypt your data blobs and verify them upon receipt to reduce risk of a malicious provider returning invalid data.
-    3. Include the data id in the signed/encrypted data to prevent the possibility of a malicious provider re-ordering your data
+   1. Make use of the "id" request parameter to prevent replay attacks and duplicated data.
+   2. Sign **and** encrypt your data blobs and verify them upon receipt to reduce risk of a malicious provider returning invalid data.
+   3. Include the data id in the signed/encrypted data to prevent the possibility of a malicious provider re-ordering your data
 2. When deleting data make use of the "signature" parameter and verify it upon receiving deletions. This makes it difficult for a provider to fake a deletion.
