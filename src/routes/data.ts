@@ -40,12 +40,31 @@ export const dataRouter = (app: express.Application) => {
 
   const getData = authenticatedHandler(
     async (req, res, next) => {
-      const body = req.params as {start: number; end: number | undefined}
-      const validator = new ModelValidator(body, {end: true})
-      return validator.validate({start: requiredNumber, end: optionalNumber})
+      const body = req.params as {
+        start: number
+        end: number | undefined
+      }
+      const queryParams = req.query as {
+        cypherindex?: string
+      }
+      const validator = new ModelValidator(
+        {...body, ...queryParams},
+        {end: true, cypherindex: true}
+      )
+      return validator.validate({
+        start: requiredNumber,
+        end: optionalNumber,
+        cypherindex: (_name, value) => {
+          if (value && typeof value === 'string' && isNotEmpty(value)) {
+            return Buffer.from(value)
+          } else {
+            return null
+          }
+        },
+      })
     },
-    async ({entity: {did}, start, end}) => {
-      const entities = await Repo.getData(did, start, end)
+    async ({entity: {did}, start, end, cypherindex}) => {
+      const entities = await Repo.getData({did, start, end, cypherindex})
       if (entities.length === 0) return {status: 404, body: {}}
       return {
         status: 200,
@@ -75,11 +94,15 @@ export const dataRouter = (app: express.Application) => {
     apiOnly,
     authenticatedHandler(
       async (req, res, next) => {
-        const body = req.body as {id: number | undefined; cyphertext: string}
-        const validator = new ModelValidator(body, {id: true})
+        const body = req.body as {
+          id: number | undefined
+          cyphertext: string
+          cypherindex: string
+        }
+        const validator = new ModelValidator(body, {id: true, cypherindex: true})
         return validator.validate({
           id: optionalNumber,
-          cyphertext: async (name, value) => {
+          cyphertext: (name, value) => {
             try {
               if (!isNotEmpty(value)) {
                 throw new Error(`cyphertext cannot be empty`)
@@ -89,10 +112,17 @@ export const dataRouter = (app: express.Application) => {
               throw new ClientFacingError(`bad ${name} format`)
             }
           },
+          cypherindex: (_name, value) => {
+            if (value && typeof value === 'string' && isNotEmpty(value)) {
+              return Buffer.from(value)
+            } else {
+              return null
+            }
+          },
         })
       },
-      async ({entity: {did}, id, cyphertext}) => {
-        const newId = await Repo.insertData(did, cyphertext, id)
+      async ({entity: {did}, id, cyphertext, cypherindex}) => {
+        const newId = await Repo.insertData({did, cyphertext, id, cypherindex})
         if (newId === null) throw new ClientFacingError('id not in sequence')
         return {
           status: 200,

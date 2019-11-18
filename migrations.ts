@@ -71,6 +71,16 @@ const migrations: IMigration[] = [
       alter table entities drop column admin;
     `,
   },
+
+  {
+    name: 'encrypted-indexes',
+    up: `
+    alter table data add column cypherindex bytea null;
+    `,
+    down: `
+    alter table data drop column cypherindex;
+    `,
+  },
 ]
 
 export async function up(conf: any, logs: boolean = true) {

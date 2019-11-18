@@ -138,11 +138,17 @@ export default class Repo {
     })
   }
 
-  public static async insertData(
-    did: string,
-    cyphertext: Buffer | Uint8Array,
+  public static async insertData({
+    did,
+    cyphertext,
+    id,
+    cypherindex,
+  }: {
+    did: string
+    cyphertext: Buffer | Uint8Array
     id?: number
-  ) {
+    cypherindex: Buffer | null
+  }) {
     return this.transaction(async client => {
       const result = await client.query(
         `
@@ -160,32 +166,56 @@ export default class Repo {
 
       await client.query(
         `
-          insert into data
-          (did  ,id  ,cyphertext) values
-          ($1           ,$2  ,$3);
+          insert into data (
+            did,
+            id,
+            cyphertext,
+            cypherindex
+          ) values (
+            $1,
+            $2,
+            $3,
+            $4
+          );
         `,
-        [did, newId, cyphertext]
+        [did, newId, cyphertext, cypherindex]
       )
       return newId
     })
   }
 
-  public static async getData(did: string, start: number, end?: number) {
-    const result = await pool.query(
-      `
+  public static async getData({
+    did,
+    start,
+    end,
+    cypherindex,
+  }: {
+    did: string
+    start: number
+    end?: number
+    cypherindex?: Buffer | null
+  }) {
+    try {
+      const result = await pool.query(
+        `
         select id, cyphertext
         from data
         where 1=1
           and id >= $2 and id <= coalesce($3::integer, $2)
           and did = $1::text
+          and coalesce($4, null) is null OR cypherindex = $4::bytea
         order by id;
       `,
-      [did, start, udefCoalesce(end, null)]
-    )
-    return result.rows as Array<{
-      id: number
-      cyphertext: Buffer | null
-    }>
+        [did, start, udefCoalesce(end, null), udefCoalesce(cypherindex, null)]
+      )
+      return result.rows as Array<{
+        id: number
+        cyphertext: Buffer | null
+      }>
+    } catch (err) {
+      console.log({err})
+      throw err
+    }
   }
 
   public static async getMe(did: string) {

@@ -12,15 +12,15 @@ export const production = {
   ssl: fs.existsSync(ca) ? {ca: fs.readFileSync(ca)} : undefined,
 }
 export const mocha = {
-  user: 'postgres',
+  user: udefCoalesce(process.env.POSTGRES_USER, 'postgres'),
   password: process.env.POSTGRES_PASSWORD,
   host: 'localhost',
   port: 5434,
-  database: 'debug',
+  database: udefCoalesce(process.env.POSTGRES_DATABASE, 'debug'),
 }
 export const development = {
-  user: 'postgres',
+  user: udefCoalesce(process.env.POSTGRES_USER, 'postgres'),
   password: process.env.POSTGRES_PASSWORD,
-  host: 'debugdb',
-  database: 'debug',
+  host: udefCoalesce(process.env.POSTGRES_HOST, 'debugdb'),
+  database: udefCoalesce(process.env.POSTGRES_DATABASE, 'debug'),
 }

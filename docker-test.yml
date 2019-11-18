@@ -1,0 +1,27 @@
+version: '3.3'
+
+services:
+  debugdb:
+    env_file: /srv/jenkins/vault/.env.docker
+    image: postgres
+    restart: 'no'
+    volumes:
+      - debugdata:/var/lib/postgresql/data
+    ports:
+      - '5434:5432'
+
+  debugvault:
+    env_file: /srv/jenkins/vault/.env.docker
+    build: .
+    restart: 'no'
+    ports:
+      - 3001:3001
+      - 9298:9298
+    depends_on:
+      - debugdb
+    command: bin/debug.sh
+    volumes:
+      - ./build:/app/build
+
+volumes:
+  debugdata:
