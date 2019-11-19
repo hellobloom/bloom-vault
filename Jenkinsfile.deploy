@@ -60,15 +60,16 @@ pipeline {
         )
       }
     }
-  }
-  stage('deploy') {
-    steps {
-      slackSend(
-        message: "Manual deployment required. Use the `deploy.sh` scripts on Vault VMs.",
-        color: "#00e981"
-      )
+    stage('deploy') {
+      steps {
+        slackSend(
+          message: "Manual deployment required. Use the `deploy.sh` scripts on Vault VMs.",
+          color: "#00e981"
+        )
+      }
     }
   }
+
   post {
     unsuccessful {
       slackSend (
