@@ -30,7 +30,7 @@ pipeline {
           docker.withRegistry('', credentialsId) {
             sh """
             docker build -f Dockerfile . --build-arg SSH_KEY="$SSH_KEY" --build-arg NPMRC='$NPMRC' -t hellobloom/bloom-vault:${env.GIT_REF}
-            docker tag hellobloom/bloom-vault:${env.GIT_REF} hellobloom/bloom-vault:latest
+            docker tag hellobloom/bloom-vault:${env.GIT_REF} hellobloom/bloom-vault
             """
           }
         }
@@ -50,7 +50,7 @@ pipeline {
           docker.withRegistry('', credentialsId) {
             sh """
             docker push hellobloom/bloom-vault:${env.GIT_REF}
-            docker push hellobloom/bloom-vault:latest
+            docker push hellobloom/bloom-vault
             """
           }
         }
