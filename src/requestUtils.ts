@@ -149,7 +149,11 @@ export async function didValidator(name: string, did: string) {
 }
 
 export const apiOnly: RequestHandler = (req, res, next) => {
-  if (req.header('Content-Type') === 'application/json') {
+  if (req.method === 'GET') {
+    next()
+  }
+  const ct = req.header('Content-Type')
+  if (typeof ct === 'string' && ct.trimLeft().startsWith('application/json')) {
     next()
   } else {
     // 415 = Unsupported media type
