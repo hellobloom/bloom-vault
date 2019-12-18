@@ -149,7 +149,7 @@ export async function didValidator(name: string, did: string) {
 }
 
 export const apiOnly: RequestHandler = (req, res, next) => {
-  if (req.method === 'GET') {
+  if (typeof req.body === 'undefined') {
     next()
   }
   const ct = req.header('Content-Type')
