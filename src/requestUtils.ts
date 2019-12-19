@@ -145,7 +145,7 @@ export class EthereumDIDResolver implements IDidResolver {
  */
 export async function didValidator(name: string, did: string) {
   try {
-    console.log('---- didValidator ---', {did})
+    console.log('---- didValidator ---', {name, did})
     const decodedDid = decodeURIComponent(did)
     console.log('--- didValidator ---', {decodedDid})
     const {didDocument} = await new EthereumDIDResolver().resolve(decodedDid)

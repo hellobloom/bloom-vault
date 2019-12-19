@@ -101,7 +101,9 @@ export const tokenRouter = (app: express.Application) => {
   )
 
   const parseDID = createRequestValidator(async req => {
+    console.log({reqQuery: req.query})
     const query = req.query as {did: string}
+    console.log({query})
     const validator = new ModelValidator(query)
 
     return validator.validate({
