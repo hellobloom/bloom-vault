@@ -119,6 +119,11 @@ const ethrDidDocumentTmpl = (ethAddress: string): IEthDidDocument => ({
  */
 export class EthereumDIDResolver implements IDidResolver {
   public async resolve(did: string): Promise<IDidResolveResult> {
+    console.log('--- EthereumDIDResolver[resolve ---', {
+      did,
+      a: did.startsWith('did:ethr:'),
+      b: EthU.isValidAddress(did.replace('did:ethr:', '')),
+    })
     if (
       !did.startsWith('did:ethr:') ||
       !EthU.isValidAddress(did.replace('did:ethr:', ''))
@@ -140,7 +145,10 @@ export class EthereumDIDResolver implements IDidResolver {
  */
 export async function didValidator(name: string, did: string) {
   try {
-    const {didDocument} = await new EthereumDIDResolver().resolve(did)
+    console.log('---- didValidator ---', {did})
+    const decodedDid = decodeURIComponent(did)
+    console.log('--- didValidator ---', {decodedDid})
+    const {didDocument} = await new EthereumDIDResolver().resolve(decodedDid)
     return didDocument.id
   } catch (err) {
     console.log(`didValidator error: ${err}`)
