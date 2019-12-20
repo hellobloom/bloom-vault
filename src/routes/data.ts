@@ -25,7 +25,10 @@ export const dataRouter = (app: express.Application) => {
     ipRateLimited(60, 'me'),
     apiOnly,
     noValidatorAuthenticatedHandler(async ({entity: {did}}) => {
-      const entity = await Repo.getMe(did)
+      const [entity, cypherIndexes] = await Promise.all([
+        Repo.getMe(did),
+        Repo.getEncryptedIndexes(did),
+      ])
       const didResolveRes = await new EthereumDIDResolver().resolve(entity.did)
       return {
         status: 200,
@@ -33,6 +36,11 @@ export const dataRouter = (app: express.Application) => {
           did: didResolveRes.didDocument,
           dataCount: entity.data_count,
           deletedCount: entity.deleted_count,
+          cypherIndexes: cypherIndexes
+            .filter(ci => ci && ci.cypherindex)
+            .map(ci => ({
+              cypherindex: ci.cypherindex.toString(),
+            })),
         },
       }
     })
@@ -72,7 +80,7 @@ export const dataRouter = (app: express.Application) => {
           entities.map(async e => {
             let cyphertext: string | null = null
             if (e.cyphertext) {
-              cyphertext = await e.cyphertext.toString()
+              cyphertext = e.cyphertext.toString()
             }
             return {
               id: e.id,

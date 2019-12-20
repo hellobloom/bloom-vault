@@ -1,6 +1,7 @@
 import * as http from 'http'
 import * as express from 'express'
 import * as bodyParser from 'body-parser'
+import * as morgan from 'morgan'
 
 import {env, PipelineStages} from './src/environment'
 
@@ -16,6 +17,7 @@ const helmet = require('helmet')
 const app = express()
 
 app.use(helmet())
+app.use(morgan('tiny'))
 
 const server = http.createServer(app)
 const port = 3001

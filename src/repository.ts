@@ -218,6 +218,26 @@ export default class Repo {
     }
   }
 
+  public static async getEncryptedIndexes(did: string) {
+    try {
+      const result = await pool.query(
+        `
+        select cypherindex
+        from data
+        where 1=1
+          and did = $1::text
+          and cypherindex is not null
+        order by id;
+        `,
+        [did]
+      )
+      return result.rows as Array<{cypherindex: Buffer}>
+    } catch (err) {
+      console.log({err})
+      throw err
+    }
+  }
+
   public static async getMe(did: string) {
     const result = await pool.query(
       `select did, data_count, deleted_count from entities where did = $1::text;`,
