@@ -36,7 +36,11 @@ export const dataRouter = (app: express.Application) => {
           did: didResolveRes.didDocument,
           dataCount: entity.data_count,
           deletedCount: entity.deleted_count,
-          cypherIndexes,
+          cypherIndexes: cypherIndexes
+            .filter(ci => ci && ci.cypherindex)
+            .map(ci => ({
+              cypherindex: ci.cypherindex.toString(),
+            })),
         },
       }
     })
@@ -76,7 +80,7 @@ export const dataRouter = (app: express.Application) => {
           entities.map(async e => {
             let cyphertext: string | null = null
             if (e.cyphertext) {
-              cyphertext = await e.cyphertext.toString()
+              cyphertext = e.cyphertext.toString()
             }
             return {
               id: e.id,
