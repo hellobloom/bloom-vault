@@ -203,7 +203,7 @@ export default class Repo {
         where 1=1
           and id >= $2 and id <= coalesce($3::integer, $2)
           and did = $1::text
-          and coalesce($4, null) is null OR cypherindex = $4::bytea
+          and (coalesce($4, null) is null OR cypherindex = $4::bytea)
         order by id;
       `,
         [did, start, udefCoalesce(end, null), udefCoalesce(cypherindex, null)]
