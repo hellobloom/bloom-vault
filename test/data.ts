@@ -291,6 +291,27 @@ describe('Data', () => {
       assert.equal(data.text, firstUser.data[0].text)
     })
 
+    it('should not return data outside of the index range', async () => {
+      const response = await getData({
+        token: firstUser.accessToken,
+        start: 0,
+        end: firstUser.data.length - 2,
+      })
+      const body = await response.json()
+      assert.equal(body[0].id, 0)
+      assert.equal(body.length, firstUser.data.length - 1)
+    })
+    it('should not return data outside of the index range', async () => {
+      const response = await getData({
+        token: firstUser.accessToken,
+        start: 5,
+        end: firstUser.data.length - 2,
+      })
+      const body = await response.json()
+      assert.equal(response.status, 404)
+      assert.deepStrictEqual(body, {})
+    })
+
     it('can retrieve data by index and verify it', async () => {
       const indexedData = firstUser.data
         .filter(d => typeof d.type !== 'undefined')
@@ -314,6 +335,38 @@ describe('Data', () => {
         assert.equal(data.id, d.id)
         assert.equal(data.text, d.text)
       }
+    })
+
+    it('should not return data outside of the index range with the cypherindex', async () => {
+      const outsidePlaintextIndex = JSON.stringify({
+        nonce: firstUser.indexNonce,
+        type: firstUser.data[2].type,
+      })
+      const outsideCypherindex = encryptAES(outsidePlaintextIndex, firstUser.aesKey)
+      const response = await getData({
+        token: firstUser.accessToken,
+        start: 0,
+        cypherindex: outsideCypherindex,
+      })
+      const body = await response.json()
+      assert.equal(response.status, 404)
+      assert.deepStrictEqual(body, {})
+    })
+
+    it('should not return data outside from another did with the cypherindex', async () => {
+      const outsidePlaintextIndex = JSON.stringify({
+        nonce: secondUser.indexNonce,
+        type: secondUser.data[3].type,
+      })
+      const outsideCypherindex = encryptAES(outsidePlaintextIndex, secondUser.aesKey)
+      const response = await getData({
+        token: firstUser.accessToken,
+        start: 0,
+        cypherindex: outsideCypherindex,
+      })
+      const body = await response.json()
+      assert.equal(response.status, 404)
+      assert.deepStrictEqual(body, {})
     })
 
     it('can get a range of data in order', async () => {
