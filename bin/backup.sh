@@ -1,5 +1,5 @@
 #!/bin/bash
-source './bin/strict-mode.sh'
+. './bin/strict-mode.sh'
 
 while true; do
   sleep 86400
