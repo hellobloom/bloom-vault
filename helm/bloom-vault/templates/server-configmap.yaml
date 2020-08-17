@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bloom-vault-configuration
+data:
+  proxy-connect-timeout: "100"
+  proxy-read-timeout: "7200"
+  proxy-send-timeout: "7200"
+  enable-underscores-in-headers: "true"
+  ignore-invalid-headers: "false"

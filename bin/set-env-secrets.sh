@@ -1,6 +1,6 @@
 #!/bin/bash
 
-: ${ENV_SECRETS_DIR:=/run/secrets}
+: ${ENV_SECRETS_DIR:=/var/run/secrets}
 debug=${ENV_SECRETS_DEBUG:-'unset'}
 
 env_secret_debug()
