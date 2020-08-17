@@ -32,13 +32,9 @@ spec:
           securityContext:
             {{- toYaml .Values.server.securityContext | nindent 12 }}
           #image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Chart.AppVersion }}"
-          #image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}"
           image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Values.image.tag }}"
           imagePullPolicy: {{ .Values.server.image.pullPolicy }}
           ports:
-            #- name: http
-            #  containerPort: 80
-            #- containerPort: 3000
             - containerPort: {{ .Values.server.service.port }}
               protocol: TCP
           #livenessProbe:
@@ -54,26 +50,23 @@ spec:
           #  timeoutSeconds: 3
           resources:
             {{- toYaml .Values.server.resources | nindent 12 }}
-
           command: [ "{{ .Values.server.containerCommand }}" ]
-          args: [ "{{ .Values.server.containerArgs}}" ]
-
-          #envFrom:
-          #  - secretRef:
-          #      #name: bloom-vault-env-secret
-          #      name: "{{ .Values.server.envSecret }}"
-
+          {{- with .Values.server.containerArgs }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          envFrom:
+            - secretRef:
+                name: "{{ .Values.server.envSecret }}"
           volumeMounts:
           # name must match the volume name below
           - name: secret-env-volume
             mountPath: "/var/run/secrets"
-
       # The secret data is exposed to Containers in the Pod through a Volume.
       volumes:
         - name: secret-env-volume
           secret:
-            #secretName: "{{ .Values.server.envSecret }}"
-            secretName: "bloom-vault-env-secret"
+            secretName: "{{ .Values.server.postgresSecret }}"
       {{- with .Values.server.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

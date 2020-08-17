@@ -15,7 +15,6 @@ server:
 
   image:
     repository: hellobloom/bloom-vault
-    #pullPolicy: IfNotPresent
     pullPolicy: Always
     # Overrides the image tag whose default is the chart appVersion.
     tag: ""
@@ -26,14 +25,13 @@ server:
   fullnameOverride: ""
 
   envSecret: bloom-vault-env-secret
-  #postgresSecret: bloom-vault-postgres-secret
+  postgresSecret: bloom-vault-postgres-secret
 
-  #containerCommand: "docker-entrypoint.sh"
-  containerCommand: "sleep"
-  # TODO change to list 
-  #containerArgs: "bin/start.sh"
-  containerArgs: "3600"
-
+  containerCommand: "docker-entrypoint.sh"
+  containerArgs: 
+    - "/bin/bash"
+    - "-c"
+    - "bin/start.sh"
   serviceAccount:
     # Specifies whether a service account should be created
     create: true
