@@ -60,11 +60,11 @@ spec:
                 name: "{{ .Values.server.envSecret }}"
           volumeMounts:
           # name must match the volume name below
-          - name: secret-env-volume
-            mountPath: "/var/run/secrets"
+          - name: secret-postgres-volume
+            mountPath: "{{ .Values.server.postgresSecretMountPath }}"
       # The secret data is exposed to Containers in the Pod through a Volume.
       volumes:
-        - name: secret-env-volume
+        - name: secret-postgres-volume
           secret:
             secretName: "{{ .Values.server.postgresSecret }}"
       {{- with .Values.server.nodeSelector }}

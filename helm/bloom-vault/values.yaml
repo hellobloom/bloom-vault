@@ -26,6 +26,7 @@ server:
 
   envSecret: bloom-vault-env-secret
   postgresSecret: bloom-vault-postgres-secret
+  postgresSecretMountPath: "/var/run/secrets"
 
   containerCommand: "docker-entrypoint.sh"
   containerArgs: 
