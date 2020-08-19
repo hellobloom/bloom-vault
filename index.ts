@@ -9,6 +9,7 @@ import {persistError} from './src/logger'
 
 import {dataRouter} from './src/routes/data'
 import {tokenRouter as authRouter} from './src/routes/auth'
+import {misc} from './src/routes/misc'
 import {ClientFacingError} from './src/utils'
 import {adminOnlyHandler} from './src/requestUtils'
 
@@ -41,6 +42,7 @@ app.use((req, res, next) => {
 
 authRouter(app)
 dataRouter(app)
+misc(app)
 
 if (env.pipelineStage() === PipelineStages.development) {
   app.post(
