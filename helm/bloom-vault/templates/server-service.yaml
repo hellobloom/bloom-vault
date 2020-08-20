@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "bloom-vault.server.fullname" . }}
+  labels:
+    {{- include "bloom-vault.server.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.server.service.type }}
+  ports:
+    - name: {{ include "bloom-vault.server.fullname" . }}
+      protocol: TCP
+      port: {{ .Values.server.service.port }}
+      targetPort: {{ .Values.server.service.targetPort }}
+
+  selector:
+    {{- include "bloom-vault.server.selectorLabels" . | nindent 4 }}

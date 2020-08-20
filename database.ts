@@ -1,7 +1,7 @@
 import {udefCoalesce} from './src/utils'
 import * as fs from 'fs'
 
-const ca = '/run/secrets/pg_ca'
+const ca = '/var/run/secrets/pg_ca'
 
 export const production = {
   user: udefCoalesce(process.env.POSTGRES_USER, 'postgres'),

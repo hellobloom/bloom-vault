@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bloom-vault.server.fullname" . }}
+  labels:
+    {{- include "bloom-vault.server.labels" . | nindent 4 }}
+spec:
+{{- if not .Values.server.autoscaling.enabled }}
+  replicas: {{ .Values.server.replicaCount }}
+{{- end }}
+  selector:
+    matchLabels:
+      {{- include "bloom-vault.server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+    {{- with .Values.server.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "bloom-vault.server.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.server.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "bloom-vault.server.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.server.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.server.securityContext | nindent 12 }}
+          #image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Chart.AppVersion }}"
+          image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.server.service.port }}
+              protocol: TCP
+          #livenessProbe:
+          #  httpGet:
+          #    path: /
+          #    port: http
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health?app={{ include "bloom-vault.server.fullname" . }}
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml .Values.server.resources | nindent 12 }}
+          command: [ "{{ .Values.server.containerCommand }}" ]
+          {{- with .Values.server.containerArgs }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          envFrom:
+            - secretRef:
+                name: "{{ .Values.server.envSecret }}"
+          volumeMounts:
+          # name must match the volume name below
+          - name: secret-postgres-volume
+            mountPath: "{{ .Values.server.postgresSecretMountPath }}"
+      # The secret data is exposed to Containers in the Pod through a Volume.
+      volumes:
+        - name: secret-postgres-volume
+          secret:
+            secretName: "{{ .Values.server.postgresSecret }}"
+      {{- with .Values.server.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
