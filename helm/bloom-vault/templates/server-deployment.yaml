@@ -41,13 +41,13 @@ spec:
           #  httpGet:
           #    path: /
           #    port: http
-          #readinessProbe:
-          #  httpGet:
-          #    path: /api/v1/health?app={{ include "bloom-vault.server.fullname" . }}
-          #    port: 3000
-          #  initialDelaySeconds: 5
-          #  periodSeconds: 30
-          #  timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health?app={{ include "bloom-vault.server.fullname" . }}
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            timeoutSeconds: 3
           resources:
             {{- toYaml .Values.server.resources | nindent 12 }}
           command: [ "{{ .Values.server.containerCommand }}" ]
