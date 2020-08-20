@@ -44,7 +44,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /api/v1/health?app={{ include "bloom-vault.server.fullname" . }}
-              port: 3000
+              port: {{ .Values.server.service.port }}
             initialDelaySeconds: 5
             periodSeconds: 30
             timeoutSeconds: 3
