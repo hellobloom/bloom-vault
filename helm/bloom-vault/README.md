@@ -19,12 +19,14 @@ The following are required for this procedure.
 
 #### Secrets
 
-- bloom-vault-env-secret:  
-  env
-- bloom-vault-postgres-secret:
-  postgres certificate
-- myregistrykey:  
-  docker registry login
+The following three secrets are dependencies.
+
+- bloom-vault-env-secret: environmental variables
+- bloom-vault-postgres-secret: postgres client certificate
+- myregistrykey: docker registry login
+
+Example secrets are included as yaml files.
+
 
 ### Configuration
 
