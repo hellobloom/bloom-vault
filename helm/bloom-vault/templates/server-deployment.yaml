@@ -35,7 +35,7 @@ spec:
           image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Values.image.tag }}"
           imagePullPolicy: {{ .Values.server.image.pullPolicy }}
           ports:
-            - containerPort: {{ .Values.server.service.port }}
+            - containerPort: {{ .Values.server.service.targetPort }}
               protocol: TCP
           #livenessProbe:
           #  httpGet:
@@ -44,7 +44,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /api/v1/health?app={{ include "bloom-vault.server.fullname" . }}
-              port: {{ .Values.server.service.port }}
+              port: {{ .Values.server.service.targetPort }}
             initialDelaySeconds: 5
             periodSeconds: 30
             timeoutSeconds: 3

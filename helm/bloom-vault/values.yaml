@@ -1,5 +1,4 @@
-# Default values for bloom-vault.
-# This is a YAML-formatted file.
+# Default values for bloom-vault.  # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
 #Global
@@ -58,7 +57,7 @@ server:
 
   service:
     type: NodePort
-    port: 3001
+    port: 80
     targetPort: 3001
 
   ingress:
