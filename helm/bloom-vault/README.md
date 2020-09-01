@@ -19,7 +19,7 @@ The following are required for this procedure.
 
 #### Secrets
 
-The following three secrets are dependencies.
+The following three secrets are dependencies for bloom-vault and must exist in the same namespace.
 
 - bloom-vault-env-secret: environmental variables
 - bloom-vault-postgres-secret: postgres client certificate
