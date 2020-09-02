@@ -4,9 +4,6 @@ metadata:
   name: {{ include "bloom-vault.server.fullname" . }}
   labels:
     {{- include "bloom-vault.server.labels" . | nindent 4 }}
-  #annotations:
-  #  # Google Cloud Network Endpoint Groups (NEGs) for ingress
-  #  cloud.google.com/neg: '{"ingress": true}'
 spec:
   type: {{ .Values.server.service.type }}
   ports:
