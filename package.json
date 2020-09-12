@@ -39,7 +39,7 @@
     "aes-js": "^3.1.2",
     "dotenv": "^6.2.0",
     "mocha": "^5.2.0",
-    "node-fetch": "^2.3.0",
+    "node-fetch": "^2.6.1",
     "nodemon": "^1.18.9",
     "prettier": "^1.16.4",
     "safe-regex": "^2.1.1",
