@@ -51,7 +51,7 @@ pipeline {
           """
         }
         slackSend (
-          message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Dependenciees installed",
+          message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Dependencies installed",
           color: "#00e981"
         )
       }
