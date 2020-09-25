@@ -115,13 +115,14 @@ pipeline {
     stage('publish') {
       steps {
         slackSend (
-          message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Publishing...",
+          message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Publishing docker image...",
           color: "#6067f1"
         )
         script {
           docker.withRegistry('', credentialsId) {
             sh """
             docker push hellobloom/bloom-vault:${env.GIT_REF}
+            docker push hellobloom/bloom-vault
             """
           }
         }
@@ -129,7 +130,25 @@ pipeline {
           message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Publish finished! ${env.BUILD_URL}display/redirect",
           color: "#ea8afb"
         )
+        slackSend (
+          message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Update helm chart repo",
+          color: "#6067f1"
+        )
+        script {
+          docker.withRegistry('', credentialsId) {
+            sh """
+            docker push hellobloom/bloom-vault:${env.GIT_REF}
+            docker push hellobloom/bloom-vault
+            """
+          }
+        }
+        slackSend (
+          message: "Jenkins PR build (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Helm chart update finished! ${env.BUILD_URL}display/redirect",
+          color: "#ea8afb"
+        )
       }
+    }
+    stage('deploy-bloom-co-dev') {
     }
   }
 

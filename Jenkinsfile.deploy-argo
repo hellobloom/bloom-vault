@@ -1,0 +1,86 @@
+node {
+  SSH_KEY = sh(returnStdout: true, script: 'cat /srv/jenkins/ssh_key')
+  NPMRC = sh(returnStdout: true, script: 'cat /srv/jenkins/npmrc')
+}
+
+pipeline {
+  environment {
+    credentialsId = 'docker-hub-credentials'
+  }
+
+  agent any
+
+  stages {
+    stage('checkout') {
+        steps {
+          checkout scm
+          script {
+            env.GIT_BRANCH_NAME=sh(returnStdout: true, script: "git rev-parse --abbrev-ref HEAD").trim()
+            env.GIT_REF=sh(returnStdout: true, script: "git rev-parse HEAD").trim()
+          }
+        }
+    }
+    stage('build') {
+      steps {
+        //slackSend (
+        //  message: "Jenkins deploy (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Build...",
+        //  color: "#6067f1"
+        //)
+        //script {
+        //  docker.withRegistry('', credentialsId) {
+        //    sh """
+        //    docker build -f Dockerfile . --build-arg SSH_KEY="$SSH_KEY" --build-arg NPMRC='$NPMRC' -t hellobloom/bloom-vault:${env.GIT_REF}
+        //    docker tag hellobloom/bloom-vault:${env.GIT_REF} hellobloom/bloom-vault
+        //    """
+        //  }
+        //}
+        //slackSend (
+        //  message: "Jenkins deploy (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Finished build",
+        //  color: "#00e981"
+        //)
+        container('any') {
+          sh """
+             echo "Build
+          """
+        }
+      }
+    }
+    stage('publish') {
+      steps {
+//        slackSend (
+//          message: "Jenkins deploy (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Publishing...",
+//          color: "#6067f1"
+//        )
+//        script {
+//          docker.withRegistry('', credentialsId) {
+//            sh """
+//            docker push hellobloom/bloom-vault:${env.GIT_REF}
+//            docker push hellobloom/bloom-vault
+//            """
+//          }
+//        }
+//        slackSend (
+//          message: "Jenkins deploy (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Publish finished! ${env.BUILD_URL}display/redirect",
+//          color: "#ea8afb"
+//        )
+      }
+    }
+    stage('deploy') {
+      steps {
+        //slackSend(
+        //  message: "Manual deployment required. Use the `deploy.sh` scripts on Vault VMs.",
+        //  color: "#00e981"
+        )
+      }
+    }
+  }
+
+  post {
+    unsuccessful {
+      //slackSend (
+      //  message: "Jenkins deploy (${env.GIT_BRANCH_NAME}: ${env.GIT_REF}) - Unsuccessful ${env.BUILD_URL}display/redirect",
+      //  color: "#c13801"
+      //)
+    }
+  }
+}
