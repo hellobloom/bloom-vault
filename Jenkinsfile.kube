@@ -1,0 +1,95 @@
+//node {
+//  SSH_KEY = sh(returnStdout: true, script: 'cat /srv/jenkins/ssh_key')
+//  NPMRC = sh(returnStdout: true, script: 'cat /srv/jenkins/npmrc')
+//}
+
+pipeline {
+  agent {
+    kubernetes {
+      label 'bloom-vault-agent-00001'
+      defaultContainer 'jnlp'
+      yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+labels:
+  component: ci
+spec:
+  serviceAccountName: jenkins
+  - name: docker
+    image: docker:latest
+    command:
+    - cat
+    tty: true
+    volumeMounts:
+    - mountPath: /var/run/docker.sock
+      name: docker-sock
+  volumes:
+    - name: docker-sock
+      hostPath:
+        path: /var/run/docker.sock
+"""
+    }
+  }
+
+  environment {
+    credentialsId = 'dockerhub-creds'
+  }
+
+  stages {
+    stage('build') {
+      steps {
+        container('docker') { 
+          sh """
+            echo "env.GIT_REF: ${env.GIT_REF}"
+            echo "GIT_COMMIT: ${GIT_COMMIT}"
+          """
+          //script {
+          //  dockerImage = docker.build registry + ":$BUILD_NUMBER"
+          //}
+          //script {
+          //  docker.withRegistry('', credentialsId) {
+          //    sh """
+          //      echo docker build -f Dockerfile . --build-arg SSH_KEY="$SSH_KEY" --build-arg NPMRC='$NPMRC' -t hellobloom/bloom-vault:${env.GIT_REF}
+          //      echo docker tag hellobloom/bloom-vault:${env.GIT_REF} hellobloom/bloom-vault
+          //    """
+          //  }
+          }
+        }
+      }
+    }
+    stage('publish') {
+      steps {
+        container('docker') { 
+          //script {
+          //  docker.withRegistry('', credentialsId) {
+          //    sh """
+          //      echo docker push hellobloom/bloom-vault:${env.GIT_REF}
+          //      echo docker push hellobloom/bloom-vault
+          //    """
+          //  }
+          //}
+          //docker.withRegistry( '', registryCredential ) {
+          //  dockerImage.push()
+          //}
+          sh("echo hello world")
+        }
+      }
+    }
+    stage('deploy') {
+      steps {
+        container('docker') { 
+          sh("echo Deploy")
+          sh("echo goodbye world")
+        }
+      }
+    }
+  }
+  //post {
+  //  unsuccessful {
+  //    container('docker') { 
+  //      sh("echo Unsuccessful")
+  //    }
+  //  }
+  //}
+}
