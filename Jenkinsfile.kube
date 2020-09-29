@@ -49,7 +49,6 @@ stages {
         //      echo docker tag hellobloom/bloom-vault:${env.GIT_REF} hellobloom/bloom-vault
         //    """
         //}
-        }
       }
     }
   }
