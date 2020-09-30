@@ -83,7 +83,10 @@ spec:
           deleteDir() /* clean up our workspace */
       }
       success {
-          echo 'I succeeded!'
+        echo 'I succeeded!'
+        slackSend channel: '#jenkins-dev',
+                  color: 'good',
+                  message: "The pipeline ${currentBuild.fullDisplayName} completed successfully."
       }
       unstable {
           echo 'I am unstable :/'
