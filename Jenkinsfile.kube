@@ -54,34 +54,38 @@ spec:
         }
       }
     }
-    stage('Build') {
-      steps {
-        container('docker') {
-          script {
-            docker.withRegistry('', DOCKERHUB_ID) {
-              sh """
-                #ls -AlF
-                docker build -q -f Dockerfile . --build-arg SSH_KEY=$SSH_KEY --build-arg NPMRC=$NPMRC -t ${DOCKER_IMAGE}:$GIT_COMMIT
-                docker tag $DOCKER_IMAGE:$GIT_COMMIT $DOCKER_IMAGE
-                docker version
-                if $DEBUG; then
-                  ls -AlF
-                fi
-              """
-            }
-          }
-          //script {
-          //  dockerImage = docker.build registry + ":$BUILD_NUMBER"
-          //}
-        }
-      }
-    }
-    stage('Publish') {
+//    stage('Build') {
+//      steps {
+//        container('docker') {
+//          script {
+//            docker.withRegistry('', DOCKERHUB_ID) {
+//              sh """
+//                #ls -AlF
+//                docker build -q -f Dockerfile . --build-arg SSH_KEY=$SSH_KEY --build-arg NPMRC=$NPMRC -t ${DOCKER_IMAGE}:$GIT_COMMIT
+//                docker tag $DOCKER_IMAGE:$GIT_COMMIT $DOCKER_IMAGE
+//                docker version
+//                if $DEBUG; then
+//                  ls -AlF
+//                fi
+//              """
+//            }
+//          }
+//          //script {
+//          //  dockerImage = docker.build registry + ":$BUILD_NUMBER"
+//          //}
+//        }
+//      }
+//    }
+    stage('Docker Image Build and Push') {
       steps {
         container('docker') { 
           script {
             docker.withRegistry('', DOCKERHUB_ID) {
-              def dockerImage = docker.build("${DOCKER_IMAGE}:${GIT_COMMIT}")
+              //def dockerImage = docker.build("${DOCKER_IMAGE}:${GIT_COMMIT}")
+              def dockerImage = docker.build(
+                "${DOCKER_IMAGE}:${GIT_COMMIT}",
+                "-q --build-arg SSH_KEY=${SSH_KEY} --build-arg NPMRC=${NPMRC} -f Dockerfile ."
+              )
               dockerImage.push()
               dockerImage.push('latest')
             }
