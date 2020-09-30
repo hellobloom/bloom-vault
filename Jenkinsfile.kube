@@ -78,32 +78,20 @@ spec:
     }
   }
   post {
-      always {
-          echo 'One way or another, I have finished'
-          deleteDir() /* clean up our workspace */
-      }
-      success {
-        slackSend channel: '#jenkins-dev',
-                  color: 'good',
-                  message: "The pipeline ${currentBuild.fullDisplayName} completed successfully."
-      }
-      unstable {
-          echo 'I am unstable :/'
-      }
-      failure {
-        slackSend channel: '#jenkins-dev',
-                  color: 'bad',
-                  message: "The pipeline ${currentBuild.fullDisplayName} failed."
-      }
-      changed {
-          echo 'Things were different before...'
-      }
+    success {
+      slackSend channel: '#jenkins-dev',
+                color: 'good',
+                message: "Pipeline ${currentBuild.fullDisplayName} success."
+    }
+    unstable {
+      slackSend channel: '#jenkins-dev',
+                color: 'warning',
+                message: "Pipeline ${currentBuild.fullDisplayName} unstable."
+    }
+    unsuccessful {
+      slackSend channel: '#jenkins-dev',
+                color: 'danger',
+                message: "Pipeline ${currentBuild.fullDisplayName} unsuccessful."
+    }
   }
 }
-  //post {
-  //  unsuccessful {
-  //    container('docker') { 
-  //      sh("echo Unsuccessful")
-  //    }
-  //  }
-  //}
