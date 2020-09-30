@@ -73,7 +73,7 @@ spec:
             docker.withRegistry('', DOCKERHUB_ID) {
               sh """
                 ls -AlF
-                docker build -f Dockerfile . --build-arg SSH_KEY=$SSH_KEY --build-arg NPMRC=$NPMRC -t ${DOCKER_IMAGE}:$GIT_COMMIT
+                docker build -q -f Dockerfile . --build-arg SSH_KEY=$SSH_KEY --build-arg NPMRC=$NPMRC -t ${DOCKER_IMAGE}:$GIT_COMMIT
                 docker tag $DOCKER_IMAGE:$GIT_COMMIT $DOCKER_IMAGE
                 docker version
                 ls -AlF
