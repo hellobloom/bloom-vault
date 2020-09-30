@@ -1,7 +1,7 @@
 pipeline {
   agent {
     kubernetes {
-      label 'bloom-vault-agent-00001'
+      label 'bloom-vault-agent-00003'
       defaultContainer 'jnlp'
       yaml """
 apiVersion: v1
@@ -11,6 +11,7 @@ labels:
   component: ci
 spec:
   serviceAccountName: jenkins
+  containers:
   - name: docker
     image: docker:latest
     command:
@@ -19,65 +20,92 @@ spec:
     volumeMounts:
     - mountPath: /var/run/docker.sock
       name: docker-sock
+  - name: alpine 
+    image: alpine:latest
+    command:
+    - cat
+    tty: true
   volumes:
     - name: docker-sock
       hostPath:
         path: /var/run/docker.sock
 """
+    }
+  }
+  environment {
+    //DOCKER_ACCT      = "hellobloom"                // Dockerhub account
+    DOCKER_ACCT      = "rcompos"   // *** TEST REPO  ***
+    IMAGE_NAME       = "bloom-vault"               // Dockerhub image name
+    DOCKER_IMAGE     = "$DOCKER_ACCT/$IMAGE_NAME"  // Dockerhub image
+    DOCKERHUB_ID     = "dockerhub-creds"           // Dockerhub credentials
+    SSH_KEY          = credentials("bloom-vault-ssh-key")  // Bloom Vault ssh key
+    NPMRC            = credentials("bloom-vault-npmrc")    // NPM token
+  }
+  parameters {
+    booleanParam(name: 'DEBUG', defaultValue: false, description: 'Debuggin mode')
+  }
+  stages {
+    stage( 'Pre' ) {
+      steps {
+        container('alpine') {
+          sh """
+            echo "Installing dependencies"
+            apk update && apk add git
+            #git rev-parse HEAD
+            if "$DEBUG"; then
+              echo "###  DEBUGGIN MODE  ###"
+              apk add tree
+              printenv
+              ls -AlF ..
+              tree -FL 6
+            fi
+          """
+        }
+      }
+    }
+    stage('Build') {
+      steps {
+        container('docker') {
+          sh """
+            echo "GIT_COMMIT: $GIT_COMMIT"
+          """
+          script {
+            docker.withRegistry('', DOCKERHUB_ID) {
+              sh """
+                ls -AlF
+                docker build -f Dockerfile . --build-arg SSH_KEY=$SSH_KEY --build-arg NPMRC=$NPMRC -t ${DOCKER_IMAGE}:$GIT_COMMIT
+                docker tag $DOCKER_IMAGE:$GIT_COMMIT $DOCKER_IMAGE
+                docker version
+                ls -AlF
+              """
+            }
+          }
+          //script {
+          //  dockerImage = docker.build registry + ":$BUILD_NUMBER"
+          //}
+        }
+      }
+    }
+    stage('Publish') {
+      steps {
+        container('docker') { 
+          sh("echo hello world")
+          script {
+            docker.withRegistry('', DOCKERHUB_ID) {
+              sh """
+                docker push $DOCKER_IMAGE:$GIT_COMMIT
+                docker push $DOCKER_IMAGE
+              """
+            }
+          }
+          //docker.withRegistry( '', registryCredential ) {
+          //  dockerImage.push()
+          //}
+        }
+      }
+    }
   }
 }
-
-environment {
-  credentialsId = 'dockerhub-creds'
-}
-
-stages {
-  stage('build') {
-    steps {
-      container('docker') {
-        sh """
-          echo "env.GIT_REF: ${env.GIT_REF}"
-          echo "GIT_COMMIT: ${GIT_COMMIT}"
-        """
-        //script {
-        //  dockerImage = docker.build registry + ":$BUILD_NUMBER"
-        //}
-        //script {
-        //  docker.withRegistry('', credentialsId) {
-        //    sh """
-        //      echo docker build -f Dockerfile . --build-arg SSH_KEY="$SSH_KEY" --build-arg NPMRC='$NPMRC' -t hellobloom/bloom-vault:${env.GIT_REF}
-        //      echo docker tag hellobloom/bloom-vault:${env.GIT_REF} hellobloom/bloom-vault
-        //    """
-        //}
-      }
-    }
-  }
-  stage('publish') {
-    steps {
-      container('docker') { 
-        //script {
-        //  docker.withRegistry('', credentialsId) {
-        //    sh """
-        //      echo docker push hellobloom/bloom-vault:${env.GIT_REF}
-        //      echo docker push hellobloom/bloom-vault
-        //    """
-        //  }
-        //}
-        //docker.withRegistry( '', registryCredential ) {
-        //  dockerImage.push()
-        //}
-        sh("echo hello world")
-      }
-    }
-  }
-  stage('deploy') {
-    steps {
-      container('docker') { 
-        sh("echo Deploy")
-        sh("echo goodbye world")
-      }
-    }
-  }
   //post {
   //  unsuccessful {
   //    container('docker') { 
@@ -85,4 +113,3 @@ stages {
   //    }
   //  }
   //}
-}
