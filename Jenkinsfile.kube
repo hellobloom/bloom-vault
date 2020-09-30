@@ -81,17 +81,17 @@ spec:
     success {
       slackSend channel: '#jenkins-dev',
                 color: 'good',
-                message: "Pipeline ${currentBuild.fullDisplayName} success."
+                message: "Pipeline ${currentBuild.fullDisplayName} success. ${DOCKER_IMAGE}:${GIT_COMMIT}"
     }
     unstable {
       slackSend channel: '#jenkins-dev',
                 color: 'warning',
-                message: "Pipeline ${currentBuild.fullDisplayName} unstable."
+                message: "Pipeline ${currentBuild.fullDisplayName} unstable. ${DOCKER_IMAGE}:${GIT_COMMIT}"
     }
     unsuccessful {
       slackSend channel: '#jenkins-dev',
                 color: 'danger',
-                message: "Pipeline ${currentBuild.fullDisplayName} unsuccessful."
+                message: "Pipeline ${currentBuild.fullDisplayName} unsuccessful. ${DOCKER_IMAGE}:${GIT_COMMIT}"
     }
   }
 }
