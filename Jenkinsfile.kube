@@ -28,13 +28,13 @@ spec:
     }
   }
   environment {
-    //DOCKER_ACCT      = "hellobloom"                // Dockerhub account
-    DOCKER_ACCT      = 'rcompos'                   // *** TEST REPO  ***
-    IMAGE_NAME       = 'bloom-vault'               // Dockerhub image name
-    DOCKER_IMAGE     = "${DOCKER_ACCT}/${IMAGE_NAME}"  // Dockerhub image
-    DOCKERHUB_ID     = 'dockerhub-creds'           // Dockerhub credentials
-    SSH_KEY          = credentials('bloom-vault-ssh-key')  // Bloom Vault ssh key
-    NPMRC            = credentials('bloom-vault-npmrc')    // NPM token
+    //DOCKER_ACCT    = "hellobloom"                  // Dockerhub account
+    DOCKER_ACCT    = 'rcompos'                       // *** TEST REPO  ***
+    IMAGE_NAME     = 'bloom-vault'                   // Dockerhub image name
+    DOCKER_IMAGE   = "${DOCKER_ACCT}/${IMAGE_NAME}"  // Dockerhub image
+    DOCKERHUB_ID   = 'dockerhub-creds'               // Dockerhub credentials
+    SSH_KEY        = credentials('bloom-vault-ssh-key')  // Bloom Vault ssh key
+    NPMRC          = credentials('bloom-vault-npmrc')    // NPM token
   }
   parameters {
     booleanParam(name: 'DEBUG', defaultValue: false, description: 'Debuggin mode')
