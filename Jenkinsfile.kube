@@ -81,12 +81,12 @@ spec:
         container('docker') { 
           script {
             docker.withRegistry('', DOCKERHUB_ID) {
-              sh """
-                #docker push $DOCKER_IMAGE:$GIT_COMMIT
-                #docker push $DOCKER_IMAGE
-                def dockerImage = docker.build("$DOCKER_IMAGE:$GIT_COMMIT")
-                dockerImage.push()
-              """
+              def dockerImage = docker.build("${DOCKER_IMAGE}:${GIT_COMMIT}")
+              dockerImage.push()
+              //sh """
+              //  #docker push $DOCKER_IMAGE:$GIT_COMMIT
+              //  #docker push $DOCKER_IMAGE
+              //"""
             }
           }
           //docker.withRegistry( '', registryCredential ) {
