@@ -29,7 +29,7 @@ spec:
   }
   environment {
     //DOCKER_ACCT      = "hellobloom"                // Dockerhub account
-    DOCKER_ACCT      = "rcompos"   // *** TEST REPO  ***
+    DOCKER_ACCT      = "rcompos"                   // *** TEST REPO  ***
     IMAGE_NAME       = "bloom-vault"               // Dockerhub image name
     DOCKER_IMAGE     = "$DOCKER_ACCT/$IMAGE_NAME"  // Dockerhub image
     DOCKERHUB_ID     = "dockerhub-creds"           // Dockerhub credentials
@@ -82,8 +82,10 @@ spec:
           script {
             docker.withRegistry('', DOCKERHUB_ID) {
               sh """
-                docker push $DOCKER_IMAGE:$GIT_COMMIT
-                docker push $DOCKER_IMAGE
+                #docker push $DOCKER_IMAGE:$GIT_COMMIT
+                #docker push $DOCKER_IMAGE
+                def dockerImage = docker.build("$DOCKER_IMAGE:$GIT_COMMIT")
+                dockerImage.push()
               """
             }
           }
