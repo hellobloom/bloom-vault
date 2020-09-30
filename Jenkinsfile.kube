@@ -44,6 +44,7 @@ spec:
       steps {
         container('docker') {
           sh """
+            exit 420
             echo "Checking envvars."
             if ${DEBUG}; then
               printenv; ls -AlF ..;
