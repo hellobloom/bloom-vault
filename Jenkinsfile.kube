@@ -30,8 +30,8 @@ spec:
   environment {
     //DOCKER_ACCT    = "hellobloom"                  // Dockerhub account
     DOCKER_ACCT    = 'rcompos'                       // *** TEST REPO  ***
-    IMAGE_NAME     = 'bloom-vault'                   // Dockerhub image name
-    DOCKER_IMAGE   = "${DOCKER_ACCT}/${IMAGE_NAME}"  // Dockerhub image
+    REPO_NAME      = 'bloom-vault'                   // Dockerhub image name
+    DOCKER_IMAGE   = "${DOCKER_ACCT}/${REPO_NAME}"  // Dockerhub image
     DOCKERHUB_ID   = 'dockerhub-creds'               // Dockerhub credentials
     SSH_KEY        = credentials('bloom-vault-ssh-key')  // Bloom Vault ssh key
     NPMRC          = credentials('bloom-vault-npmrc')    // NPM token
@@ -74,6 +74,13 @@ spec:
             }
           }
         }
+      }
+    }
+    stage('Chart Update and Package') {
+      steps {
+        build 'bloom-charts',
+          parameters: [[$class: 'StringParameterValue', name: 'BLOOM_REPO', value: "${REPO_NAME}"],
+                       [$class: 'BooleanParameterValue', name: 'DEBUG', value: "${DEBUG}"]]
       }
     }
   }
