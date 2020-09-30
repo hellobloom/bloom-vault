@@ -84,6 +84,7 @@ spec:
             //parameters: [string(name: 'BLOOM_REPO', value:"${params.BLOOM_REPO}"),
             //             booleanParam(name: 'DEBUG', value:"${params.DEBUG}")]
             parameters: [[$class: 'StringParameterValue', name: 'BLOOM_REPO', value: "${REPO_NAME}"],
+                         [$class: 'StringParameterValue', name: 'COMMIT_HASH', value: "${GIT_COMMIT}"],
                          [$class: 'BooleanParameterValue', name: 'DEBUG', value: "${params.DEBUG}"]]
           )
       }
