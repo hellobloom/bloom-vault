@@ -83,7 +83,7 @@ spec:
             job: "../${CHARTS_REPO}/${GIT_BRANCH}",
             //parameters: [string(name: 'BLOOM_REPO', value:"${params.BLOOM_REPO}"),
             //             booleanParam(name: 'DEBUG', value:"${params.DEBUG}")]
-            parameters: [[$class: 'StringParameterValue', name: 'BLOOM_REPO', value: "${params.REPO_NAME}"],
+            parameters: [[$class: 'StringParameterValue', name: 'BLOOM_REPO', value: "${REPO_NAME}"],
                          [$class: 'BooleanParameterValue', name: 'DEBUG', value: "${params.DEBUG}"]]
           )
       }
