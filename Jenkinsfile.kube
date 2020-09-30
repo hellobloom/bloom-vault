@@ -49,7 +49,6 @@ spec:
               echo "###  DEBUGGIN MODE  ###"
               printenv
               ls -AlF ..
-              tree -FL 6
             fi
           """
         }
