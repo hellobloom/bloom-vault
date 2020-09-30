@@ -1,7 +1,7 @@
 pipeline {
   agent {
     kubernetes {
-      label 'bloom-vault-agent-00003'
+      label 'bloom-vault-agent-00004'
       defaultContainer 'jnlp'
       yaml """
 apiVersion: v1
@@ -20,11 +20,6 @@ spec:
     volumeMounts:
     - mountPath: /var/run/docker.sock
       name: docker-sock
-  - name: alpine 
-    image: alpine:latest
-    command:
-    - cat
-    tty: true
   volumes:
     - name: docker-sock
       hostPath:
@@ -47,14 +42,11 @@ spec:
   stages {
     stage( 'Pre' ) {
       steps {
-        container('alpine') {
+        container('docker') {
           sh """
             echo "Installing dependencies"
-            apk update && apk add git
-            #git rev-parse HEAD
-            if "$DEBUG"; then
+            if $DEBUG; then
               echo "###  DEBUGGIN MODE  ###"
-              apk add tree
               printenv
               ls -AlF ..
               tree -FL 6
@@ -66,17 +58,16 @@ spec:
     stage('Build') {
       steps {
         container('docker') {
-          sh """
-            echo "GIT_COMMIT: $GIT_COMMIT"
-          """
           script {
             docker.withRegistry('', DOCKERHUB_ID) {
               sh """
-                ls -AlF
+                #ls -AlF
                 docker build -q -f Dockerfile . --build-arg SSH_KEY=$SSH_KEY --build-arg NPMRC=$NPMRC -t ${DOCKER_IMAGE}:$GIT_COMMIT
                 docker tag $DOCKER_IMAGE:$GIT_COMMIT $DOCKER_IMAGE
                 docker version
-                ls -AlF
+                if $DEBUG; then
+                  ls -AlF
+                fi
               """
             }
           }
@@ -89,7 +80,6 @@ spec:
     stage('Publish') {
       steps {
         container('docker') { 
-          sh("echo hello world")
           script {
             docker.withRegistry('', DOCKERHUB_ID) {
               sh """
