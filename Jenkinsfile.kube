@@ -36,6 +36,7 @@ spec:
     DOCKERHUB_ID   = 'dockerhub-creds'               // Dockerhub credentials
     SSH_KEY        = credentials('bloom-vault-ssh-key')  // Bloom Vault ssh key
     NPMRC          = credentials('bloom-vault-npmrc')    // NPM token
+    SLACK_CHAN     = '#jenkins-dev' 
   }
   parameters {
     booleanParam(name: 'DEBUG', defaultValue: false, description: 'Debuggin mode')
@@ -92,17 +93,17 @@ spec:
   }
   post {
     success {
-      slackSend channel: '#jenkins-dev',
+      slackSend channel: ${SLACK_CHAN},
                 color: 'good',
                 message: "Pipeline ${currentBuild.fullDisplayName} success. ${DOCKER_IMAGE}:${GIT_COMMIT}"
     }
     unstable {
-      slackSend channel: '#jenkins-dev',
+      slackSend channel: ${SLACK_CHAN},
                 color: 'warning',
                 message: "Pipeline ${currentBuild.fullDisplayName} unstable. ${DOCKER_IMAGE}:${GIT_COMMIT}"
     }
     unsuccessful {
-      slackSend channel: '#jenkins-dev',
+      slackSend channel: ${SLACK_CHAN},
                 color: 'danger',
                 message: "Pipeline ${currentBuild.fullDisplayName} unsuccessful. ${DOCKER_IMAGE}:${GIT_COMMIT}"
     }
