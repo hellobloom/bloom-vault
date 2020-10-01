@@ -93,17 +93,17 @@ spec:
   }
   post {
     success {
-      slackSend channel: ${SLACK_CHAN},
+      slackSend channel: "${SLACK_CHAN}",
                 color: 'good',
                 message: "Pipeline ${currentBuild.fullDisplayName} success. ${DOCKER_IMAGE}:${GIT_COMMIT}"
     }
     unstable {
-      slackSend channel: ${SLACK_CHAN},
+      slackSend channel: "${SLACK_CHAN}",
                 color: 'warning',
                 message: "Pipeline ${currentBuild.fullDisplayName} unstable. ${DOCKER_IMAGE}:${GIT_COMMIT}"
     }
     unsuccessful {
-      slackSend channel: ${SLACK_CHAN},
+      slackSend channel: "${SLACK_CHAN}",
                 color: 'danger',
                 message: "Pipeline ${currentBuild.fullDisplayName} unsuccessful. ${DOCKER_IMAGE}:${GIT_COMMIT}"
     }
