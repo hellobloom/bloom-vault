@@ -28,7 +28,7 @@ spec:
     }
   }
   environment {
-    DOCKER_ACCT    = "hellobloom"                  // Dockerhub account
+    DOCKER_ACCT    = "hellobloom"             // Dockerhub account
     REPO_NAME      = 'bloom-vault'                   // Dockerhub image name
     DOCKER_IMAGE   = "${DOCKER_ACCT}/${REPO_NAME}"   // Dockerhub image
     CHARTS_REPO    = 'bloom-charts'                  // Dockerhub image name
