@@ -1,6 +1,7 @@
 pipeline {
   agent {
     kubernetes {
+
       label 'bloom-vault-agent-00004'
       defaultContainer 'jnlp'
       yaml """
@@ -28,11 +29,11 @@ spec:
     }
   }
   environment {
-    DOCKER_ACCT    = "hellobloom"             // Dockerhub account
-    REPO_NAME      = 'bloom-vault'                   // Dockerhub image name
-    DOCKER_IMAGE   = "${DOCKER_ACCT}/${REPO_NAME}"   // Dockerhub image
-    CHARTS_REPO    = 'bloom-charts'                  // Dockerhub image name
-    DOCKERHUB_ID   = 'dockerhub-creds'               // Dockerhub credentials
+    DOCKER_ACCT    = "hellobloom"                        // Dockerhub account
+    REPO_NAME      = 'bloom-vault'                       // Dockerhub image name
+    DOCKER_IMAGE   = "${DOCKER_ACCT}/${REPO_NAME}"       // Dockerhub image
+    CHARTS_REPO    = 'bloom-charts'                      // Dockerhub image name
+    DOCKERHUB_ID   = 'dockerhub-creds'                   // Dockerhub credentials
     SSH_KEY        = credentials('bloom-vault-ssh-key')  // Bloom Vault ssh key
     NPMRC          = credentials('bloom-vault-npmrc')    // NPM token
     DOCKER_ARG     = "-q --build-arg SSH_KEY=${SSH_KEY} --build-arg NPMRC=${NPMRC} -f Dockerfile ."
