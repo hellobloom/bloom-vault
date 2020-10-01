@@ -36,6 +36,7 @@ spec:
     DOCKERHUB_ID   = 'dockerhub-creds'               // Dockerhub credentials
     SSH_KEY        = credentials('bloom-vault-ssh-key')  // Bloom Vault ssh key
     NPMRC          = credentials('bloom-vault-npmrc')    // NPM token
+    DOCKER_ARG     = "-q --build-arg SSH_KEY=${SSH_KEY} --build-arg NPMRC=${NPMRC} -f Dockerfile ."
     SLACK_CHAN     = '#jenkins-dev' 
   }
   parameters {
@@ -69,7 +70,8 @@ spec:
             docker.withRegistry('', DOCKERHUB_ID) {
               def dockerImage = docker.build(
                 "${DOCKER_IMAGE}:${GIT_COMMIT}",
-                "-q --build-arg SSH_KEY=${SSH_KEY} --build-arg NPMRC=${NPMRC} -f Dockerfile ."
+                //"-q --build-arg SSH_KEY=${SSH_KEY} --build-arg NPMRC=${NPMRC} -f Dockerfile ."
+                "${DOCKER_ARG}"
               )
               dockerImage.push()
               dockerImage.push('latest')
