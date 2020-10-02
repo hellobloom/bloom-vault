@@ -1,7 +1,7 @@
 pipeline {
   agent {
     kubernetes {
-      label 'bloom-vault-agent-00004'
+      label 'bloom-vault-agent-00005'
       defaultContainer 'jnlp'
       yaml """
 apiVersion: v1
@@ -20,6 +20,11 @@ spec:
     volumeMounts:
     - mountPath: /var/run/docker.sock
       name: docker-sock
+  - name: node
+    image: node:10
+    command:
+    - cat
+    tty: true
   volumes:
     - name: docker-sock
       hostPath:
@@ -79,6 +84,20 @@ spec:
         }
       }
     }
+    stage('Test') {
+      steps {
+        container('node') {
+          sh """
+            ls -AlF ..; ls -AlF .
+            npm version
+            npm ci
+            ./bin/test.sh
+            ./bin/prettier.sh
+            ./bin/tslint.sh
+          """
+        }
+      }
+    }
     stage('Chart Update and Package') {
       steps {
         build(
@@ -86,7 +105,7 @@ spec:
             parameters: [[$class: 'StringParameterValue', name: 'BLOOM_REPO', value: "${REPO_NAME}"],
                          [$class: 'StringParameterValue', name: 'COMMIT_HASH', value: "${GIT_COMMIT}"],
                          [$class: 'BooleanParameterValue', name: 'DEBUG', value: "${params.DEBUG}"]]
-          )
+        )
       }
     }
   }
