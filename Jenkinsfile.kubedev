@@ -88,7 +88,7 @@ spec:
       steps {
         container('ubuntu') {
           sh """
-            DEBIAN_FRONTEND="noninteractive"
+            export DEBIAN_FRONTEND="noninteractive"
             apt -y update && apt install -y node-typescript npm && \
               apt install -y postgresql && apt clean
             # Allow no pw for postgresql
