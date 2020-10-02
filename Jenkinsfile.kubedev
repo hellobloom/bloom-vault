@@ -90,7 +90,7 @@ spec:
           sh """
             export DEBIAN_FRONTEND="noninteractive"
             #apt -y update && apt install -y node-typescript npm postgresql docker.io && apt clean
-            apt -y update && apt install -y node-typescript npm postgresql docker.io
+            apt -y update && apt install -y node-typescript npm postgresql docker.io curl
             # Allow no pw for postgresql
             perl -pi -e's/md5/trust/g' /etc/postgresql/12/main/pg_hba.conf
             apt -y update && apt -y install postgresql-client
