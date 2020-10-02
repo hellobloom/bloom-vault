@@ -87,13 +87,12 @@ spec:
     stage('Test') {
       steps {
         container('ubuntu') {
+          withCredentials([file(credentialsId: 'bloom-vault-env-docker', variable: 'ENV_DOCKER')]) {
           sh """
+            ls -AlF ..; ls -AlF .
+            cat $ENV_DOCKER
             export DEBIAN_FRONTEND="noninteractive"
-            #apt -y update && apt install -y node-typescript npm postgresql docker.io && apt clean
-            apt -y update && apt install -y node-typescript npm postgresql docker.io curl
-            # Allow no pw for postgresql
-            perl -pi -e's/md5/trust/g' /etc/postgresql/12/main/pg_hba.conf
-            apt -y update && apt -y install postgresql-client
+            apt -y update && apt install -y node-typescript npm docker.io curl
             curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-\$(uname -s)-\$(uname -m)" -o /usr/local/bin/docker-compose
             chmod +x /usr/local/bin/docker-compose 
             ls -AlF ..; ls -AlF .
@@ -103,6 +102,7 @@ spec:
             ./bin/prettier.sh
             ./bin/tslint.sh
           """
+          }
         }
       }
     }
