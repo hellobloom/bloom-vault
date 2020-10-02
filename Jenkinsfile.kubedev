@@ -1,7 +1,7 @@
 pipeline {
   agent {
     kubernetes {
-      label 'bloom-vault-agent-00005'
+      label 'bloom-vault-agent-00006'
       defaultContainer 'jnlp'
       yaml """
 apiVersion: v1
@@ -20,8 +20,8 @@ spec:
     volumeMounts:
     - mountPath: /var/run/docker.sock
       name: docker-sock
-  - name: node
-    image: node:10
+  - name: ubuntu
+    image: ubuntu:20.04
     command:
     - cat
     tty: true
@@ -86,8 +86,13 @@ spec:
     }
     stage('Test') {
       steps {
-        container('node') {
+        container('ubuntu') {
           sh """
+            apt-get update && apt-get install -y node-typescript npm && \
+              apt-get install -y postgresql && apt-get clean
+            # Allow no pw for postgresql
+            perl -pi -e's/md5/trust/g' /etc/postgresql/12/main/pg_hba.conf
+            apt-get -y update && apt-get -y install postgresql-client
             ls -AlF ..; ls -AlF .
             npm version
             npm ci
