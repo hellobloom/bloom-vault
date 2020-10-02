@@ -89,11 +89,11 @@ spec:
         container('ubuntu') {
           sh """
             DEBIAN_FRONTEND="noninteractive"
-            apt-get update && apt-get install -y node-typescript npm && \
-              apt-get install -y postgresql && apt-get clean
+            apt -y update && apt install -y node-typescript npm && \
+              apt install -y postgresql && apt clean
             # Allow no pw for postgresql
             perl -pi -e's/md5/trust/g' /etc/postgresql/12/main/pg_hba.conf
-            apt-get -y update && apt-get -y install postgresql-client
+            apt -y update && apt -y install postgresql-client
             ls -AlF ..; ls -AlF .
             npm version
             npm ci
