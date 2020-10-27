@@ -65,6 +65,8 @@ spec:
             apt -y update
             apt -y install docker-ce
             service docker status
+            service docker start
+            service docker status
             docker run hello-world
 
             echo "Installing docker-compose"
