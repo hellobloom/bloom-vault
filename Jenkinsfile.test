@@ -13,77 +13,15 @@ labels:
 spec:
   serviceAccountName: jenkins
   containers:
-  - name: docker
-    image: docker:latest
-    command:
-    - cat
-    tty: true
-    volumeMounts:
-    - mountPath: /var/run/docker.sock
-      name: docker-sock
   - name: ubuntu
     image: ubuntu:20.04
     command:
     - cat
     tty: true
-  volumes:
-    - name: docker-sock
-      hostPath:
-        path: /var/run/docker.sock
 """
     }
   }
-  environment {
-    DOCKER_ACCT    = "hellobloom"                       // Dockerhub  account
-    REPO_NAME      = 'bloom-vault'                       // Dockerhub image name
-    DOCKER_IMAGE   = "${DOCKER_ACCT}/${REPO_NAME}"       // Dockerhub image
-    CHARTS_REPO    = 'bloom-charts'                      // Dockerhub image name
-    DOCKERHUB_ID   = 'dockerhub-creds'                   // Dockerhub credentials
-    SSH_KEY        = credentials('bloom-vault-ssh-key')  // Bloom Vault ssh key
-    NPMRC          = credentials('bloom-vault-npmrc')    // NPM token
-    DOCKER_ARG     = "-q --build-arg SSH_KEY=${SSH_KEY} --build-arg NPMRC=${NPMRC} -f Dockerfile ."
-    SLACK_CHAN     = '#jenkins-dev'
-  }
-  parameters {
-    booleanParam(name: 'DEBUG', defaultValue: false, description: 'Debuggin mode')
-  }
   stages {
-    stage( 'Pre' ) {
-      steps {
-        container('docker') {
-          sh """
-            echo "Checking envvars."
-            if ${DEBUG}; then
-              printenv; ls -AlF ..;
-            fi
-            if test -z ${SSH_KEY}; then
-              echo "ERROR: SSH_KEY must be set"
-              exit 2
-            fi
-            if test -z ${NPMRC}; then
-              echo "ERROR: NPMRC must be set"
-              exit 2
-            fi
-          """
-        }
-      }
-    }
-    stage('Docker Image Build and Push') {
-      steps {
-        container('docker') {
-          script {
-            docker.withRegistry('', DOCKERHUB_ID) {
-              def dockerImage = docker.build(
-                "${DOCKER_IMAGE}:${GIT_COMMIT}",
-                "${DOCKER_ARG}"
-              )
-              dockerImage.push()
-              dockerImage.push('latest')
-            }
-          }
-        }
-      }
-    }
     stage('Test') {
       steps {
         container('ubuntu') {
@@ -119,16 +57,6 @@ spec:
             docker-compose --version
           """
         }
-      }
-    }
-    stage('Chart Update and Package') {
-      steps {
-        build(
-            job: "../${CHARTS_REPO}/${GIT_BRANCH}",
-            parameters: [[$class: 'StringParameterValue', name: 'BLOOM_REPO', value: "${REPO_NAME}"],
-                         [$class: 'StringParameterValue', name: 'COMMIT_HASH', value: "${GIT_COMMIT}"],
-                         [$class: 'BooleanParameterValue', name: 'DEBUG', value: "${params.DEBUG}"]]
-          )
       }
     }
   }
