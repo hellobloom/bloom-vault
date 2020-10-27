@@ -2,7 +2,7 @@ pipeline {
   agent {
     kubernetes {
 
-      label 'bloom-vault-agent-00007'
+      label 'bloom-vault-agent-00008'
       defaultContainer 'jnlp'
       yaml """
 apiVersion: v1
@@ -18,6 +18,9 @@ spec:
     command:
     - cat
     tty: true
+    volumeMounts:
+    - mountPath: /var/run/docker.sock
+      name: docker-sock
   volumes:
     - name: docker-sock
       hostPath:
