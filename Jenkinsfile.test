@@ -43,11 +43,15 @@ spec:
             echo "Setting DEBIAN_FRONTEND to noninteractive for zero interaction while installing or upgrading the system via apt"
             export DEBIAN_FRONTEND="noninteractive"
 
+            echo "Installing base dependencies"
+            apt -y update
+            apt -y install curl
+
 
             echo "Installing Node 10"
             # https://github.com/nodesource/distributions/blob/master/README.md
-            curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
-            sudo apt-get install -y nodejs
+            curl -sL https://deb.nodesource.com/setup_10.x | bash -
+            apt -y install nodejs
 
             echo "Node / NPM Versions"
             node -v
@@ -55,17 +59,17 @@ spec:
 
             echo "Installing docker"
             # https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=94798094
-            sudo apt-get install apt-transport-https ca-certificates curl software-properties-common
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-            sudo add-apt-repository  "deb [arch=amd64] https://download.docker.com/linux/ubuntu  \$(lsb_release -cs) stable"
-            sudo apt-get update
-            sudo apt-get -y install docker-ce
-            sudo systemctl status docker
-            sudo docker run hello-world
+            apt -y install apt-transport-https ca-certificates curl software-properties-common
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+            add-apt-repository  "deb [arch=amd64] https://download.docker.com/linux/ubuntu  \$(lsb_release -cs) stable"
+            apt -y update
+            apt -y install docker-ce
+            systemctl status docker
+            docker run hello-world
 
             echo "Installing docker-compose"
-            sudo curl -L https://github.com/docker/compose/releases/download/1.17.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
-            sudo chmod +x /usr/local/bin/docker-compose
+            curl -L https://github.com/docker/compose/releases/download/1.17.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+            chmod +x /usr/local/bin/docker-compose
             docker-compose --version
           """
         }
