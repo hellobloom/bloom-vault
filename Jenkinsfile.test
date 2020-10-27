@@ -64,7 +64,7 @@ spec:
             add-apt-repository  "deb [arch=amd64] https://download.docker.com/linux/ubuntu  \$(lsb_release -cs) stable"
             apt -y update
             apt -y install docker-ce
-            systemctl status docker
+            service docker status
             docker run hello-world
 
             echo "Installing docker-compose"
