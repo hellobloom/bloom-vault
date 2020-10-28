@@ -23,6 +23,9 @@ echo "before"
 docker-compose -f docker-test.yml ps
 echo "after"
 
+echo "the long night"
+sleep 3600
+
 echo "pg pwd = $POSTGRES_PASSWORD, pg db = $POSTGRES_DATABASE"
 PGPASSWORD=$POSTGRES_PASSWORD dropdb --if-exists -h localhost -p 5434 -U jenkins -w $POSTGRES_DATABASE
 PGPASSWORD=$POSTGRES_PASSWORD createdb -h localhost -p 5434 -U jenkins $POSTGRES_DATABASE
