@@ -82,6 +82,7 @@ spec:
             echo "Installing postgres"
             apt -y install postgresql postgresql-contrib
             psql --version
+            pg_ctlcluster 12 main start
 
             echo "Running npm ci && ./bin/test.sh"
             npm ci
