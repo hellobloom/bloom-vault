@@ -83,7 +83,8 @@ spec:
             apt -y install postgresql postgresql-contrib
             psql --version
 
-            echo "Running ./bin/test.sh"
+            echo "Running npm ci && ./bin/test.sh"
+            npm ci
             ./bin/test.sh
           """
         }
