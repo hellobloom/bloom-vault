@@ -2,7 +2,8 @@
 echo "Running bin/test.sh"
 npm run build
 echo "npm run build succeeded"
-docker-compose -f docker-test.yml up --build -d
+# docker-compose -f docker-test.yml up --build -d
+docker-compose --verbose -f docker-test.yml up --build
 echo "docker-compose up succeeded"
 # sleep 90 give the docker-compose up plenty of time to run the web server for npm run test
 sleep 90
