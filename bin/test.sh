@@ -13,9 +13,8 @@ echo "bin_dir = $bin_dir"
 echo "sourcing .env.debug succeeded"
 
 echo "postgres permissions config begin"
-su - postgres
-createuser -s -i -d -r -l -w root
-psql -c "ALTER ROLE root WITH PASSWORD 'root';"
+su - postgres -c "createuser -s -i -d -r -l -w root"
+su - postgres -c "psql -c \"ALTER ROLE root WITH PASSWORD 'root';\""
 exit
 
 echo "pg pwd = $POSTGRES_PASSWORD, pg db = $POSTGRES_DATABASE"
