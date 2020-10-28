@@ -6,7 +6,7 @@ services:
     image: postgres
     restart: 'no'
     volumes:
-      - debugdata:/var/lib/postgresql/data
+      - debugdata:/var/lib/postgresql/12/data
     ports:
       - '5434:5432'
 
