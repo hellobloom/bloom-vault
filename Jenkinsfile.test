@@ -81,7 +81,7 @@ spec:
 
             echo "Installing postgres"
             apt -y install postgresql postgresql-contrib
-            psql -v
+            psql --version
 
             echo "Running ./bin/test.sh"
             ./bin/test.sh
