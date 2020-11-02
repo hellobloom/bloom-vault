@@ -1,17 +1,3 @@
-// import * as path from 'path'
-import * as path from 'path'
-import * as fs from 'fs'
-
-// console.log('hi', __dirname)
-// // used for development/testing
-// if (fs.existsSync(path.join(__dirname, '.env'))) {
-//   console.log('hia')
-//   require('dotenv').config({path: path.join(__dirname, '.env')})
-// } else {
-//   console.log('hiz')
-//   require('dotenv').config({path: path.join(__dirname, '../../.env')})
-// }
-
 import {toBoolean} from './utils'
 
 export enum PipelineStages {

@@ -16,9 +16,6 @@ su - postgres -c "psql -c \"ALTER ROLE root WITH PASSWORD 'DONTUSETHISPASSWORD';
 PGPASSWORD=$POSTGRES_PASSWORD dropdb --if-exists -h localhost -p 5432 -U root -w $POSTGRES_DATABASE
 PGPASSWORD=$POSTGRES_PASSWORD createdb -h localhost -p 5432 -U root $POSTGRES_DATABASE
 
-# echo "'cat'ing the contents from .env.test into .env for 'npm run start'"
-# cat $bin_dir/../.env.test > $bin_dir/../.env
-
 echo "Starting server for tests with .env.test environment vars"
 cat .env.test | xargs npm run start & test_server_pid=$!
 echo "Started server with pid '$test_server_pid'"
