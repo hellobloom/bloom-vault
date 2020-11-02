@@ -11,6 +11,10 @@ bin_dir=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 echo "bin_dir = $bin_dir"
 . $bin_dir/../.env.test
 
+echo "pg db: $POSTGRES_DATABASE"
+echo "pg user: $POSTGRES_USER"
+echo "pg pwd: $POSTGRES_PASSWORD"
+
 echo "Postgres permissions config begin"
 su - postgres -c "createuser -s -i -d -r -l -w root"
 su - postgres -c "psql -c \"ALTER ROLE root WITH PASSWORD 'DONTUSETHISPASSWORD';\""
