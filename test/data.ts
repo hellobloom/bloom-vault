@@ -1,5 +1,5 @@
 import * as path from 'path'
-require('dotenv').config({path: path.join(__dirname, '../.env.debug')})
+require('dotenv').config({path: path.join(__dirname, '../.env.test')})
 import * as assert from 'assert'
 import fetch, {Response} from 'node-fetch'
 import {Client} from 'pg'
