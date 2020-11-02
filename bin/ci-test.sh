@@ -13,10 +13,12 @@ echo "bin_dir = $bin_dir"
 
 echo "Postgres permissions config begin"
 su - postgres -c "createuser -s -i -d -r -l -w root"
-su - postgres -c "psql -c \"ALTER ROLE root WITH PASSWORD 'root';\""
+su - postgres -c "psql -c \"ALTER ROLE root WITH PASSWORD 'DONTUSETHISPASSWORD';\""
 PGPASSWORD=$POSTGRES_PASSWORD dropdb --if-exists -h localhost -p 5432 -U root -w $POSTGRES_DATABASE
-PGPASSWORD=$POSTGRES_PASSWORD createdb -h localhost -p 5434 -U root $POSTGRES_DATABASE
+PGPASSWORD=$POSTGRES_PASSWORD createdb -h localhost -p 5432 -U root $POSTGRES_DATABASE
 
+echo "'cat'ing the contents from .env.debug into .env for migrate, start, and test"
+cat $bin_dir/../.env.debug > $bin_dir/../.env
 echo "Migrate database"
 npm run migrate
 
