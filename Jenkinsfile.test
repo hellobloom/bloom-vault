@@ -64,29 +64,13 @@ spec:
             node -v
             npm -v
 
-            echo "Installing docker"
-            # https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=94798094
-            apt -y install apt-transport-https ca-certificates curl software-properties-common
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-            add-apt-repository  "deb [arch=amd64] https://download.docker.com/linux/ubuntu  \$(lsb_release -cs) stable"
-            apt -y update
-            apt -y install docker-ce
-            service docker start
-            docker -v
-
-            echo "Installing docker-compose"
-            curl -L https://github.com/docker/compose/releases/download/1.17.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
-            chmod +x /usr/local/bin/docker-compose
-            docker-compose -v
-
             echo "Installing postgres"
             apt -y install postgresql postgresql-contrib
             psql --version
             pg_ctlcluster 12 main start
 
-            echo "Running npm ci && ./bin/test.sh"
-            npm ci
-            ./bin/test.sh
+            echo "Running bin/ci-test.sh"
+            ./bin/ci-test.sh
           """
         }
       }
