@@ -25,16 +25,13 @@ PGPASSWORD=$POSTGRES_PASSWORD createdb -h localhost -p 5432 -U root $POSTGRES_DA
 echo "'cat'ing the contents from .env.test into .env for migrate, start, and test"
 cat $bin_dir/../.env.test > $bin_dir/../.env
 
-echo "Migrate database $NODE_ENV"
-NODE_ENV=mocha npm run migrate
-
 echo "Starting server for tests"
-NODE_ENV=mocha npm run start & test_server_pid=$!
+npm run start & test_server_pid=$!
 echo "Started server with pid $test_server_pid"
 sleep 15
 
 echo "Running tests"
-NODE_ENV=mocha npm run test || exit 1
+npm run test || exit 1
 
 echo "Killing $test_server_pid"
 kill -9 $test_server_pid
