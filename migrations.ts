@@ -154,8 +154,6 @@ process.on('unhandledRejection', reason => {
 })
 
 if (!module.parent) {
-  console.log(`process.env.NODE_ENV=${process.env.NODE_ENV}`)
-  console.log(`config=${JSON.stringify(config[process.env.NODE_ENV!])}`)
   up(config[process.env.NODE_ENV!]).catch(e => {
     throw e
   })

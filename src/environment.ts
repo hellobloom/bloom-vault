@@ -38,6 +38,7 @@ function getTokenExpiration() {
   if (value <= 0) throw new Error(`${variable} must be > 0`)
   return value
 }
+
 export const env = {
   nodeEnv: () => environmentVariable('NODE_ENV'),
   pipelineStage: () => getPipelineStage(),

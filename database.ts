@@ -15,7 +15,7 @@ export const mocha = {
   user: udefCoalesce(process.env.POSTGRES_USER, 'postgres'),
   password: process.env.POSTGRES_PASSWORD,
   host: 'localhost',
-  port: 5432,
+  port: udefCoalesce(process.env.POSTGRES_PORT, 5434),
   database: udefCoalesce(process.env.POSTGRES_DATABASE, 'debug'),
 }
 export const development = {

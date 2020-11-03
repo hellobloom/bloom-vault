@@ -2,16 +2,16 @@ version: '3.3'
 
 services:
   debugdb:
-    env_file: .env.debug
+    env_file: .env.docker
     image: postgres
     restart: 'no'
     volumes:
-      - debugdata:/var/lib/postgresql/12/data
+      - debugdata:/var/lib/postgresql/data
     ports:
       - '5434:5432'
 
   debugvault:
-    env_file: .env.debug
+    env_file: .env.docker
     build: .
     restart: 'no'
     ports:
