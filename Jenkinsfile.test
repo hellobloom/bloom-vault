@@ -45,8 +45,6 @@ spec:
       steps {
         container('ubuntu') {
           sh """
-            ls -al
-
             echo "Setting DEBIAN_FRONTEND to noninteractive for zero interaction while installing or upgrading the system via apt"
             export DEBIAN_FRONTEND="noninteractive"
 
