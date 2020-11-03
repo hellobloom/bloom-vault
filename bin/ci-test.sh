@@ -17,7 +17,7 @@ PGPASSWORD=$POSTGRES_PASSWORD dropdb --if-exists -h localhost -p 5432 -U root -w
 PGPASSWORD=$POSTGRES_PASSWORD createdb -h localhost -p 5432 -U root $POSTGRES_DATABASE
 
 echo "Starting server for tests with .env.test environment vars"
-cat .env.test | xargs npm run start & test_server_pid=$!
+cat .env.test | xargs && npm run start & test_server_pid=$!
 echo "Started server with pid '$test_server_pid'"
 
 echo "Sleeping for 15 seconds to give the server a chance to boot prior to tests"
