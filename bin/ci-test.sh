@@ -6,9 +6,8 @@ npm ci
 echo "Building"
 npm run build
 
-echo "Sourcing .env.test"
-bin_dir=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
-. $bin_dir/../.env.test
+echo "Adding .env.test to environment"
+export $(cat .env.test | xargs)
 
 echo "Postgres config for root"
 su - postgres -c "createuser -s -i -d -r -l -w root"
@@ -17,7 +16,7 @@ PGPASSWORD=$POSTGRES_PASSWORD dropdb --if-exists -h localhost -p 5432 -U root -w
 PGPASSWORD=$POSTGRES_PASSWORD createdb -h localhost -p 5432 -U root $POSTGRES_DATABASE
 
 echo "Starting server for tests with .env.test environment vars"
-cat .env.test | xargs && npm run start & test_server_pid=$!
+npm run start & test_server_pid=$!
 echo "Started server with pid '$test_server_pid'"
 
 echo "Sleeping for 15 seconds to give the server a chance to boot prior to tests"
