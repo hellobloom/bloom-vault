@@ -1,7 +1,7 @@
 pipeline {
   agent {
     kubernetes {
-      label 'bloom-vault-agent-00004'
+      label 'bloom-vault-agent-00009'
       defaultContainer 'jnlp'
       yaml """
 apiVersion: v1
@@ -12,6 +12,11 @@ labels:
 spec:
   serviceAccountName: jenkins
   containers:
+  - name: ubuntu
+    image: ubuntu:20.04
+    command:
+    - cat
+    tty: true
   - name: docker
     image: docker:latest
     command:
@@ -36,13 +41,13 @@ spec:
     SSH_KEY        = credentials('bloom-vault-ssh-key')  // Bloom Vault ssh key
     NPMRC          = credentials('bloom-vault-npmrc')    // NPM token
     DOCKER_ARG     = "-q --build-arg SSH_KEY=${SSH_KEY} --build-arg NPMRC=${NPMRC} -f Dockerfile ."
-    SLACK_CHAN     = '#jenkins-dev' 
+    SLACK_CHAN     = '#jenkins-dev' // TODO: Make this conditional based on git branch?
   }
   parameters {
     booleanParam(name: 'DEBUG', defaultValue: false, description: 'Debuggin mode')
   }
   stages {
-    stage( 'Pre' ) {
+    stage('Pre') { // TODO: Is this required?
       steps {
         container('docker') {
           sh """
@@ -51,20 +56,52 @@ spec:
               printenv; ls -AlF ..;
             fi
             if test -z ${SSH_KEY}; then
-              echo "ERROR: SSH_KEY must be set" 
+              echo "ERROR: SSH_KEY must be set"
               exit 2
             fi
             if test -z ${NPMRC}; then
-              echo "ERROR: NPMRC must be set" 
+              echo "ERROR: NPMRC must be set"
               exit 2
             fi
           """
         }
       }
     }
+    stage('CI Tests') {
+      steps {
+        container('ubuntu') {
+          sh """
+            echo "Setting DEBIAN_FRONTEND to noninteractive for zero interaction while installing or upgrading the system via apt"
+            export DEBIAN_FRONTEND="noninteractive"
+
+            echo "Installing base dependencies"
+            apt -y update
+            apt -y install curl
+
+
+            echo "Installing Node 10"
+            # https://github.com/nodesource/distributions/blob/master/README.md
+            curl -sL https://deb.nodesource.com/setup_10.x | bash -
+            apt -y install nodejs
+
+            echo "Node / NPM Versions"
+            node -v
+            npm -v
+
+            echo "Installing postgres"
+            apt -y install postgresql postgresql-contrib
+            psql --version
+            pg_ctlcluster 12 main start
+
+            echo "Running ./bin/ci-test.sh"
+            ./bin/ci-test.sh
+          """
+        }
+      }
+    }
     stage('Docker Image Build and Push') {
       steps {
-        container('docker') { 
+        container('docker') {
           script {
             docker.withRegistry('', DOCKERHUB_ID) {
               def dockerImage = docker.build(
