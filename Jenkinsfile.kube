@@ -1,3 +1,9 @@
+/*
+  TODOs
+  - All commits to dev, stage, and main should NOT run CI Tests, but should be built, packaged, and deployed via Argo their respective environments
+  - All PR commits for PRs opened against stage and main should run CI Tests and fail builds if tests don't pass. These commits should NOT build, package, deploy.
+  - [sugar feature] Send notifications to conditional slack channel based on branch
+*/
 pipeline {
   agent {
     kubernetes {
@@ -41,13 +47,13 @@ spec:
     SSH_KEY        = credentials('bloom-vault-ssh-key')  // Bloom Vault ssh key
     NPMRC          = credentials('bloom-vault-npmrc')    // NPM token
     DOCKER_ARG     = "-q --build-arg SSH_KEY=${SSH_KEY} --build-arg NPMRC=${NPMRC} -f Dockerfile ."
-    SLACK_CHAN     = '#jenkins-dev' // TODO: Make this conditional based on git branch?
+    SLACK_CHAN     = '#jenkins-dev'
   }
   parameters {
     booleanParam(name: 'DEBUG', defaultValue: false, description: 'Debuggin mode')
   }
   stages {
-    stage('Pre') { // TODO: Is this required?
+    stage('Pre') {
       steps {
         container('docker') {
           sh """
