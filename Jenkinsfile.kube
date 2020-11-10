@@ -1,7 +1,15 @@
+/*
+  TODOs
+  - All commits to dev, stage, and main should NOT run CI Tests, but should be built, 
+    packaged, and deployed via Argo their respective environments
+  - All PR commits for PRs opened against stage and main should run CI Tests and fail 
+    builds if tests don't pass. These commits should NOT build, package, deploy.
+  - [sugar feature] Send notifications to conditional slack channel based on branch
+*/
 pipeline {
   agent {
     kubernetes {
-      label 'bloom-vault-agent-00004'
+      label 'bloom-vault-agent-00009'
       defaultContainer 'jnlp'
       yaml """
 apiVersion: v1
@@ -12,6 +20,11 @@ labels:
 spec:
   serviceAccountName: jenkins
   containers:
+  - name: ubuntu
+    image: ubuntu:20.04
+    command:
+    - cat
+    tty: true
   - name: docker
     image: docker:latest
     command:
@@ -36,13 +49,13 @@ spec:
     SSH_KEY        = credentials('bloom-vault-ssh-key')  // Bloom Vault ssh key
     NPMRC          = credentials('bloom-vault-npmrc')    // NPM token
     DOCKER_ARG     = "-q --build-arg SSH_KEY=${SSH_KEY} --build-arg NPMRC=${NPMRC} -f Dockerfile ."
-    SLACK_CHAN     = '#jenkins-dev' 
+    SLACK_CHAN     = '#jenkins-dev'
   }
   parameters {
     booleanParam(name: 'DEBUG', defaultValue: false, description: 'Debuggin mode')
   }
   stages {
-    stage( 'Pre' ) {
+    stage('Pre') {
       steps {
         container('docker') {
           sh """
@@ -51,20 +64,54 @@ spec:
               printenv; ls -AlF ..;
             fi
             if test -z ${SSH_KEY}; then
-              echo "ERROR: SSH_KEY must be set" 
+              echo "ERROR: SSH_KEY must be set"
               exit 2
             fi
             if test -z ${NPMRC}; then
-              echo "ERROR: NPMRC must be set" 
+              echo "ERROR: NPMRC must be set"
               exit 2
             fi
           """
         }
       }
     }
-    stage('Docker Image Build and Push') {
+    stage('CI Tests') {
+      when { not { anyOf { branch 'master'; branch 'stage'; } } }
       steps {
-        container('docker') { 
+        container('ubuntu') {
+          sh """
+            echo "Setting DEBIAN_FRONTEND to noninteractive for zero interaction while installing or upgrading the system via apt"
+            export DEBIAN_FRONTEND="noninteractive"
+
+            echo "Installing base dependencies"
+            apt -y update
+            apt -y install curl
+
+
+            echo "Installing Node 10"
+            # https://github.com/nodesource/distributions/blob/master/README.md
+            curl -sL https://deb.nodesource.com/setup_10.x | bash -
+            apt -y install nodejs
+
+            echo "Node / NPM Versions"
+            node -v
+            npm -v
+
+            echo "Installing postgres"
+            apt -y install postgresql postgresql-contrib
+            psql --version
+            pg_ctlcluster 12 main start
+
+            echo "Running ./bin/ci-test.sh"
+            ./bin/ci-test.sh
+          """
+        }
+      }
+    }
+    stage('Docker Image Build and Push') {
+      when { anyOf { branch 'master'; branch 'main'; branch 'stage'; branch 'dev' } }
+      steps {
+        container('docker') {
           script {
             docker.withRegistry('', DOCKERHUB_ID) {
               def dockerImage = docker.build(
@@ -79,6 +126,7 @@ spec:
       }
     }
     stage('Chart Update and Package') {
+      when { anyOf { branch 'master'; branch 'main'; branch 'stage'; branch 'dev' } }
       steps {
         build(
             job: "../${CHARTS_REPO}/${GIT_BRANCH}",
