@@ -74,6 +74,8 @@ spec:
       }
     }
     stage('CI Tests') {
+      when { not { anyOf { branch 'master'; branch 'stage'; branch 'dev' } }
+      }
       steps {
         container('ubuntu') {
           sh """
