@@ -384,6 +384,19 @@ describe('Data', () => {
       }
     })
 
+    it('the indexes returned by /data/me are unique', async () => {
+      const me = await (await getMe(firstUser.accessToken)).json()
+      const cypherIndexes = me.cypherIndexes as {cypherindex: string}[]
+      assert.equal(
+        cypherIndexes.length,
+        cypherIndexes.filter((ci, idx) => {
+          return (
+            cypherIndexes.findIndex(c => c.cypherindex === ci.cypherindex) === idx
+          )
+        }).length
+      )
+    })
+
     it('should not return data outside of the index range with the cypherindex', async () => {
       const outsidePlaintextIndex = JSON.stringify({
         nonce: firstUser.indexNonce,
