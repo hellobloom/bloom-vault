@@ -5,9 +5,7 @@ import {env} from './environment'
 import * as EthU from 'ethereumjs-util'
 import {udefCoalesce, recoverEthAddressFromPersonalRpcSig} from './utils'
 
-const pool = new Pool(
-  env.nodeEnv() === 'production' ? config.production : config.development
-)
+const pool = new Pool(config[env.nodeEnv()])
 
 pool.on('error', (err, client) => {
   persistError(err.message, err.stack!)
