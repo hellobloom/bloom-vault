@@ -256,7 +256,11 @@ export default class Repo {
         `,
         [did]
       )
-      return result.rows as Array<{cypherindex: Buffer}>
+      const rows = result.rows as Array<{cypherindex: Buffer}>
+      const unqCipherIndexes = rows.filter((row, idx) => {
+        return rows.findIndex(r => r.cypherindex.equals(row.cypherindex)) === idx
+      })
+      return unqCipherIndexes
     } catch (err) {
       console.log({err})
       throw err
