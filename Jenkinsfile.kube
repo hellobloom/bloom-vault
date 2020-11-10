@@ -109,7 +109,7 @@ spec:
       }
     }
     stage('Docker Image Build and Push') {
-      when { anyOf { branch 'master'; branch 'stage'; branch 'dev' } }
+      when { anyOf { branch 'master'; branch 'main'; branch 'stage'; branch 'dev' } }
       steps {
         container('docker') {
           script {
@@ -126,7 +126,7 @@ spec:
       }
     }
     stage('Chart Update and Package') {
-      when { anyOf { branch 'master'; branch 'stage'; branch 'dev' } }
+      when { anyOf { branch 'master'; branch 'main'; branch 'stage'; branch 'dev' } }
       steps {
         build(
             job: "../${CHARTS_REPO}/${GIT_BRANCH}",
