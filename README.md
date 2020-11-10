@@ -283,6 +283,12 @@ first start up in debug mode using the commands above then
 
 `npm run test`
 
+_By default the above tests use the `.env.test` file, but it can easily be overridden by setting the `TEST_ENV` to a different file path like so:_
+
+```
+TEST_ENV=../.env npm run test
+```
+
 ## Hot reloading
 
 using the VSCode debug profile "Attach to Docker" will enable hot reloading. Or you can run `npm run watch` in a separate terminal
