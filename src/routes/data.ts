@@ -64,7 +64,7 @@ export const dataRouter = (app: express.Application) => {
         end: optionalNumber,
         cypherindex: (_name, value) => {
           if (value && typeof value === 'string' && isNotEmpty(value)) {
-            return Buffer.from(value)
+            return value.split(',').map(v => Buffer.from(v))
           } else {
             return null
           }
@@ -105,7 +105,7 @@ export const dataRouter = (app: express.Application) => {
         const body = req.body as {
           id: number | undefined
           cyphertext: string
-          cypherindex: string
+          cypherindex: string | string[]
         }
         const validator = new ModelValidator(body, {id: true, cypherindex: true})
         return validator.validate({
@@ -121,11 +121,16 @@ export const dataRouter = (app: express.Application) => {
             }
           },
           cypherindex: (_name, value) => {
-            if (value && typeof value === 'string' && isNotEmpty(value)) {
-              return Buffer.from(value)
-            } else {
+            if (!value) {
               return null
             }
+            if (typeof value === 'string' && isNotEmpty(value)) {
+              return [Buffer.from(value)]
+            }
+            if (Array.isArray(value) && value.length) {
+              return value.map(v => Buffer.from(v))
+            }
+            return null
           },
         })
       },

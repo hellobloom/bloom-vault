@@ -3,7 +3,7 @@
     packaged, and deployed via Argo their respective environments
   - All PR commits for PRs opened against stage and main should run CI Tests and fail 
     builds if tests don't pass. These commits should NOT build, package, deploy.
-  - [TODO] Send notifications to conditional slack channel based on branch
+  - Send notifications to conditional slack channel based on branch
 */
 
 def DEBUG = params.getOrDefault("DEBUG", false)
