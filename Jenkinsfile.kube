@@ -1,11 +1,3 @@
-/*
-  TODOs
-  - All commits to dev, stage, and main should NOT run CI Tests, but should be built, 
-    packaged, and deployed via Argo their respective environments
-  - All PR commits for PRs opened against stage and main should run CI Tests and fail 
-    builds if tests don't pass. These commits should NOT build, package, deploy.
-  - [sugar feature] Send notifications to conditional slack channel based on branch
-*/
 pipeline {
   agent {
     kubernetes {
@@ -109,7 +101,7 @@ spec:
       }
     }
     stage('Docker Image Build and Push') {
-      when { anyOf { branch 'master'; branch 'stage'; branch 'dev' } }
+      when { anyOf { branch 'master'; branch 'main'; branch 'stage'; branch 'dev' } }
       steps {
         container('docker') {
           script {
@@ -126,7 +118,7 @@ spec:
       }
     }
     stage('Chart Update and Package') {
-      when { anyOf { branch 'master'; branch 'stage'; branch 'dev' } }
+      when { anyOf { branch 'master'; branch 'main'; branch 'stage'; branch 'dev' } }
       steps {
         build(
             job: "../${CHARTS_REPO}/${GIT_BRANCH}",
