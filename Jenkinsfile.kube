@@ -1,11 +1,13 @@
 /*
-  TODOs
   - All commits to dev, stage, and main should NOT run CI Tests, but should be built, 
     packaged, and deployed via Argo their respective environments
   - All PR commits for PRs opened against stage and main should run CI Tests and fail 
     builds if tests don't pass. These commits should NOT build, package, deploy.
-  - [sugar feature] Send notifications to conditional slack channel based on branch
+  - [TODO] Send notifications to conditional slack channel based on branch
 */
+
+def DEBUG = params.getOrDefault("DEBUG", false)
+
 pipeline {
   agent {
     kubernetes {
@@ -41,7 +43,7 @@ spec:
     }
   }
   environment {
-    DOCKER_ACCT    = "hellobloom"                       // Dockerhub  account
+    DOCKER_ACCT    = "hellobloom"                        // Dockerhub  account
     REPO_NAME      = 'bloom-vault'                       // Dockerhub image name
     DOCKER_IMAGE   = "${DOCKER_ACCT}/${REPO_NAME}"       // Dockerhub image
     CHARTS_REPO    = 'bloom-charts'                      // Dockerhub image name
@@ -79,6 +81,7 @@ spec:
       when { not { anyOf { branch 'master'; branch 'stage'; } } }
       steps {
         container('ubuntu') {
+          /*
           sh """
             echo "Setting DEBIAN_FRONTEND to noninteractive for zero interaction while installing or upgrading the system via apt"
             export DEBIAN_FRONTEND="noninteractive"
@@ -105,6 +108,8 @@ spec:
             echo "Running ./bin/ci-test.sh"
             ./bin/ci-test.sh
           """
+          */
+          sh './bin/cicd-test-jenkins.sh'
         }
       }
     }
