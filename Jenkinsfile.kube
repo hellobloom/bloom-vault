@@ -1,3 +1,5 @@
+def DEBUG = params.getOrDefault("DEBUG", false)
+
 pipeline {
   agent {
     kubernetes {

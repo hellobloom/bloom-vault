@@ -100,7 +100,8 @@ const migrations: IMigration[] = [
 
       insert into data_encrypted_indexes (data_id, data_did, cipherindex)
       select id, did, cypherindex
-      from data;
+      from data
+      where cypherindex is not null;
     `,
     down: `
       drop table if exists data_encrypted_indexes;
