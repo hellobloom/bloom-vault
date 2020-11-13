@@ -51,7 +51,7 @@ spec:
     SSH_KEY        = credentials('bloom-vault-ssh-key')  // Bloom Vault ssh key
     NPMRC          = credentials('bloom-vault-npmrc')    // NPM token
     DOCKER_ARG     = "-q --build-arg SSH_KEY=${SSH_KEY} --build-arg NPMRC=${NPMRC} -f Dockerfile ."
-    SLACK_CHAN     = '#jenkins-dev'
+    SLACK_CHAN     = '#jenkins-${GIT_BRANCH}'
   }
   parameters {
     booleanParam(name: 'DEBUG', defaultValue: false, description: 'Debuggin mode')
@@ -81,34 +81,6 @@ spec:
       when { not { anyOf { branch 'master'; branch 'stage'; } } }
       steps {
         container('ubuntu') {
-          /*
-          sh """
-            echo "Setting DEBIAN_FRONTEND to noninteractive for zero interaction while installing or upgrading the system via apt"
-            export DEBIAN_FRONTEND="noninteractive"
-
-            echo "Installing base dependencies"
-            apt -y update
-            apt -y install curl
-
-
-            echo "Installing Node 10"
-            # https://github.com/nodesource/distributions/blob/master/README.md
-            curl -sL https://deb.nodesource.com/setup_10.x | bash -
-            apt -y install nodejs
-
-            echo "Node / NPM Versions"
-            node -v
-            npm -v
-
-            echo "Installing postgres"
-            apt -y install postgresql postgresql-contrib
-            psql --version
-            pg_ctlcluster 12 main start
-
-            echo "Running ./bin/ci-test.sh"
-            ./bin/ci-test.sh
-          """
-          */
           sh './bin/cicd-test-jenkins.sh'
         }
       }
