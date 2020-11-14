@@ -106,7 +106,7 @@ spec:
         }
       }
     }
-    stage('Chart Update and Package') {
+    stage('Helm Chart Update and Package') {
       when { anyOf { branch 'master'; branch 'main'; branch 'stage'; branch 'dev' } }
       steps {
         build(
