@@ -8,8 +8,8 @@
 
 def DEBUG = params.getOrDefault("DEBUG", false)
 def slackGit = "pr"
-if ( BRANCH_NAME == "main" || BRANCH_NAME == "stage" || BRANCH_NAME == "dev" ) {
-  slackGit = "${GIT_BRANCH}"
+if ( env.GIT_BRANCH == "main" || env.GIT_BRANCH == "stage" || env.GIT_BRANCH == "dev" ) {
+  slackGit = env.GIT_BRANCH
 }
 
 pipeline {
