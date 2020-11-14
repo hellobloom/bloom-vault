@@ -7,6 +7,10 @@
 */
 
 def DEBUG = params.getOrDefault("DEBUG", false)
+def slackGit = "pr"
+if ( BRANCH_NAME == "main" || BRANCH_NAME == "stage" || BRANCH_NAME == "dev" ) {
+  slackGit = ${GIT_BRANCH}
+}
 
 pipeline {
   agent {
@@ -51,7 +55,7 @@ spec:
     SSH_KEY        = credentials('bloom-vault-ssh-key')  // Bloom Vault ssh key
     NPMRC          = credentials('bloom-vault-npmrc')    // NPM token
     DOCKER_ARG     = "-q --build-arg SSH_KEY=${SSH_KEY} --build-arg NPMRC=${NPMRC} -f Dockerfile ."
-    SLACK_CHAN     = '#jenkins-${GIT_BRANCH}'
+    SLACK_CHAN     = "#jenkins-${slackGit}"
   }
   parameters {
     booleanParam(name: 'DEBUG', defaultValue: false, description: 'Debuggin mode')
