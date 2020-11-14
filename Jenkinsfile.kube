@@ -8,7 +8,7 @@
 
 def DEBUG = params.getOrDefault("DEBUG", false)
 def slackGit = "pr"
-if ( env.GIT_BRANCH == "main" || env.GIT_BRANCH == "stage" || env.GIT_BRANCH == "dev" ) {
+if ( env.GIT_BRANCH == "master" || env.GIT_BRANCH == "main" || env.GIT_BRANCH == "stage" || env.GIT_BRANCH == "dev" ) {
   slackGit = env.GIT_BRANCH
 }
 
