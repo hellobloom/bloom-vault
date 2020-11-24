@@ -1,5 +1,10 @@
 import * as path from 'path'
-require('dotenv').config({path: path.join(__dirname, '../.env.debug')})
+require('dotenv').config({
+  path: path.join(
+    __dirname,
+    typeof process.env.TEST_ENV === 'string' ? process.env.TEST_ENV : '../.env.test'
+  ),
+})
 import * as assert from 'assert'
 import fetch, {Response} from 'node-fetch'
 import {Client} from 'pg'
@@ -15,7 +20,7 @@ const url = 'http://localhost:3001'
 interface IData {
   id: number
   text: string
-  type?: string
+  type?: string | string[]
 }
 
 interface IUser {
@@ -34,6 +39,7 @@ describe('Data', () => {
   let firstUser: IUser
   let secondUserAddress: string
   let secondUser: IUser
+  let sharedMultiIndex = 'SHARED_MULTI_INDEX'
 
   async function requestToken(user: IUser, initialize: boolean = false) {
     const response = await fetch(
@@ -77,10 +83,12 @@ describe('Data', () => {
     token: string
     start: number
     end?: number
-    cypherindex?: string
+    cypherindex?: string | string[]
   }) {
     const queryParams = (cypherindex
-      ? `?cypherindex=${encodeURIComponent(cypherindex)}`
+      ? `?cypherindex=${encodeURIComponent(
+          Array.isArray(cypherindex) ? cypherindex.join(',') : cypherindex
+        )}`
       : ''
     ).trim()
     return fetch(`${url}/data/${start}/${udefCoalesce(end, '')}${queryParams}`, {
@@ -100,7 +108,7 @@ describe('Data', () => {
     token: string
     cyphertext: string
     id?: number
-    cypherindex?: string
+    cypherindex?: string | string[]
   }) {
     return fetch(`${url}/data`, {
       method: 'POST',
@@ -158,6 +166,16 @@ describe('Data', () => {
         {id: 1, text: 'user1data1'},
         {id: 2, text: 'user1data2', type: 'user1data2-type-1'},
         {id: 3, text: 'user1data3', type: 'user1data3-type-2'},
+        {
+          id: 4,
+          text: 'user1data4',
+          type: ['user1data4-type-1', sharedMultiIndex],
+        },
+        {
+          id: 5,
+          text: 'user1data5',
+          type: [sharedMultiIndex, 'user1data5-type-1'],
+        },
       ],
       accessToken: '',
     }
@@ -241,16 +259,19 @@ describe('Data', () => {
         for (const data of user.data) {
           const plaintext = JSON.stringify(data)
           const message = encryptAES(plaintext, user.aesKey)
-          const getCypherIndex = () => {
+          const getCypherIndex = (): string[] | undefined => {
             if (typeof data.type === 'undefined') {
               return undefined
             }
-            const plaintextIndex = JSON.stringify({
-              nonce: user.indexNonce,
-              type: data.type,
+            const dataTypes = Array.isArray(data.type) ? data.type : [data.type]
+            return dataTypes.map(dt => {
+              const plaintextIndex = JSON.stringify({
+                nonce: user.indexNonce,
+                type: dt,
+              })
+              const cypherindex = encryptAES(plaintextIndex, user.aesKey)
+              return cypherindex
             })
-            const cypherindex = encryptAES(plaintextIndex, user.aesKey)
-            return cypherindex
           }
 
           // only specify the id sometimes to test with or without it
@@ -318,23 +339,67 @@ describe('Data', () => {
         .sort(d => d.id)
 
       for (const d of indexedData) {
-        const plaintextIndex = JSON.stringify({
-          nonce: firstUser.indexNonce,
-          type: d.type,
-        })
-        const cypherindex = encryptAES(plaintextIndex, firstUser.aesKey)
+        const dataTypes = Array.isArray(d.type) ? d.type : ([d.type] as string[])
+        const cipherindexes: string[] = []
+
+        for (const dt of dataTypes) {
+          const plaintextIndex = JSON.stringify({
+            nonce: firstUser.indexNonce,
+            type: dt,
+          })
+          const cypherindex = encryptAES(plaintextIndex, firstUser.aesKey)
+          cipherindexes.push(cypherindex)
+        }
+
         const response = await getData({
           token: firstUser.accessToken,
           start: d.id,
-          cypherindex,
+          cypherindex: cipherindexes,
         })
-
         const body = await response.json()
-        const decrypted = await decryptAES(body[0].cyphertext, firstUser.aesKey)
+        const decrypted = decryptAES(body[0].cyphertext, firstUser.aesKey)
         const data = JSON.parse(decrypted) as IData
         assert.equal(data.id, d.id)
         assert.equal(data.text, d.text)
       }
+    })
+
+    it('can retrieve data by a shared index and verify the correlating records', async () => {
+      const plaintextIndex = JSON.stringify({
+        nonce: firstUser.indexNonce,
+        type: sharedMultiIndex,
+      })
+      const cypherindex = encryptAES(plaintextIndex, firstUser.aesKey)
+      const response = await getData({
+        token: firstUser.accessToken,
+        start: 0,
+        end: firstUser.data.length - 1,
+        cypherindex,
+      })
+      const body = await response.json()
+      const matchingDataRows = firstUser.data.filter(
+        d =>
+          Array.isArray(d.type) && d.type.findIndex(t => t === sharedMultiIndex) > -1
+      )
+      assert.equal(body.length, matchingDataRows.length)
+
+      for (const d of body) {
+        const exists = matchingDataRows.findIndex(md => md.id === d.id) > -1
+        assert.equal(exists, true)
+      }
+    })
+
+    it('the indexes returned by /data/me are unique', async () => {
+      const me = await (await getMe(firstUser.accessToken)).json()
+      const cypherIndexes = me.cypherIndexes as {cypherindex: string}[]
+      assert.equal(
+        cypherIndexes.length,
+        cypherIndexes.filter((ci, idx) => {
+          return (
+            cypherIndexes.findIndex(c => c.cypherindex === ci.cypherindex) === idx
+          )
+        }).length
+      )
     })
 
     it('should not return data outside of the index range with the cypherindex', async () => {
