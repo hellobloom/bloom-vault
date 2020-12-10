@@ -2,6 +2,7 @@ node {
   SSH_KEY = sh(returnStdout: true, script: 'cat /srv/jenkins/ssh_key')
   NPMRC = sh(returnStdout: true, script: 'cat /srv/jenkins/npmrc')
 }
+// comment
 
 pipeline {
   environment {
