@@ -1,4 +1,6 @@
-import * as express from 'express-serve-static-core'
+import * as express from 'express'
+import * as EthU from 'ethereumjs-util'
+
 import {
   apiOnly,
   authenticatedHandler,
@@ -17,7 +19,6 @@ import {
   isNotEmpty,
   recoverEthAddressFromPersonalRpcSig,
 } from '../utils'
-import * as EthU from 'ethereumjs-util'
 
 export const dataRouter = (app: express.Application) => {
   app.get(

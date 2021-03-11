@@ -268,7 +268,7 @@ A typical scenario might be as follows:
 
 ## Running debug mode
 
-- install node if you havent already ([version 10 recommended](https://nodejs.org/dist/v10.15.1/)) \*if you have nvm run `nvm use`
+- install node if you havent already ([version 14 recommended](https://nodejs.org/dist/v14.16.0/)) \*if you have nvm run `nvm use`
 
 ```
 npm install

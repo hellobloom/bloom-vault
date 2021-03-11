@@ -8,11 +8,12 @@ require('dotenv').config({
 import * as assert from 'assert'
 import fetch, {Response} from 'node-fetch'
 import {Client} from 'pg'
+import uuidv4 from 'uuidv4'
+
 import {up, down} from '../migrations'
 import * as db from '../database'
 import {env} from '../src/environment'
 import {personalSign} from '../src/utils'
-import uuidv4 from 'uuidv4'
 
 const url = 'http://localhost:3001'
 

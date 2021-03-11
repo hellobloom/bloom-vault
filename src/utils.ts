@@ -1,5 +1,5 @@
 import * as EthU from 'ethereumjs-util'
-import * as wallet from 'ethereumjs-wallet'
+import Wallet from 'ethereumjs-wallet'
 
 const sleep = (miliseconds: number) =>
   new Promise(resolve => setTimeout(resolve, miliseconds))
@@ -126,7 +126,7 @@ function recoverEthAddressFromDigest(digest: Buffer, rpcSig: string): Buffer {
   // Recover public key from the hash of the message we constructed and the signature the user provided
   const recoveredPubkey = EthU.ecrecover(digest, sigParts.v, sigParts.r, sigParts.s)
   // Convert the recovered public key into the corresponding ethereum address
-  const recoveredAddress = wallet.fromPublicKey(recoveredPubkey).getAddressString()
+  const recoveredAddress = Wallet.fromPublicKey(recoveredPubkey).getAddressString()
   const zerox = '0x'
   return new Buffer(
     recoveredAddress.startsWith(zerox)

@@ -8,12 +8,13 @@ require('dotenv').config({
 import * as assert from 'assert'
 import fetch, {Response} from 'node-fetch'
 import {Client} from 'pg'
+import {ByteSource} from 'aes-js'
+import uuidv4 from 'uuidv4'
+
 import {up, down} from '../migrations'
 import * as db from '../database'
 import {dataDeletionMessage, udefCoalesce, personalSign} from '../src/utils'
-import {ByteSource} from 'aes-js'
 import {getRandomKey, encryptAES, decryptAES} from './utls/aes'
-import uuidv4 from 'uuidv4'
 
 const url = 'http://localhost:3001'
 

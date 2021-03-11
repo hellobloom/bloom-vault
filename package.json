@@ -3,6 +3,10 @@
   "version": "0.0.1",
   "description": "e2e encrypted provider agnositc data storage",
   "main": "build/index.js",
+  "private": true,
+  "engines": {
+    "node": "^14"
+  },
   "scripts": {
     "migrate": "ts-node migrations.ts",
     "build": "tsc",
@@ -18,12 +22,12 @@
   "dependencies": {
     "@decentralized-identity/did-common-typescript": "^0.1.19",
     "body-parser": "^1.18.3",
-    "ethereumjs-util": "^6.1.0",
-    "ethereumjs-wallet": "^0.6.3",
+    "ethereumjs-util": "^7.0.9",
+    "ethereumjs-wallet": "^1.0.1",
     "express": "^4.16.3",
     "helmet": "^3.21.1",
     "morgan": "^1.9.1",
-    "pg": "^7.8.0"
+    "pg": "^8.5.1"
   },
   "devDependencies": {
     "@types/aes-js": "^3.1.0",
@@ -32,9 +36,9 @@
     "@types/express": "^4.16.0",
     "@types/mocha": "^5.2.5",
     "@types/morgan": "^1.7.37",
-    "@types/node": "^10.3.4",
+    "@types/node": "^14.14.33",
     "@types/node-fetch": "^2.1.4",
-    "@types/pg": "^7.4.11",
+    "@types/pg": "^7.14.11",
     "@types/safe-regex": "^1.1.1",
     "aes-js": "^3.1.2",
     "dotenv": "^6.2.0",

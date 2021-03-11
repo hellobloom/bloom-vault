@@ -1,4 +1,6 @@
-import * as express from 'express-serve-static-core'
+import * as express from 'express'
+import * as EthU from 'ethereumjs-util'
+
 import {
   apiOnly,
   asyncHandler,
@@ -15,7 +17,6 @@ import {
   toBoolean,
   recoverEthAddressFromPersonalRpcSig,
 } from '../utils'
-import * as EthU from 'ethereumjs-util'
 
 export const tokenRouter = (app: express.Application) => {
   app.post(
