@@ -82,9 +82,9 @@ spec:
             apt -y install curl
 
 
-            echo "Installing Node 10"
+            echo "Installing Node 14"
             # https://github.com/nodesource/distributions/blob/master/README.md
-            curl -sL https://deb.nodesource.com/setup_10.x | bash -
+            curl -sL https://deb.nodesource.com/setup_14.x | bash -
             apt -y install nodejs
 
             echo "Node / NPM Versions"

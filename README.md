@@ -357,3 +357,4 @@ if you use the included postgres image and want to periodically back up the volu
 ## Gotchas
 
 - the POSTGRES_PASSWORD will be set in the volume the first time running and will not reset between rebuilding the images. If you want to change the password you have to either remove the volume using the command above or connect using a pg client and change it
+- On initial boot the debugdb will use the `POSTGRES_DB` env var, not the `POSTGRES_DATABASE` env var, to create a db

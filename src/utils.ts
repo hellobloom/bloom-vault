@@ -141,14 +141,14 @@ export function recoverEthAddressFromPersonalRpcSig(
   rpcSig: string
 ): Buffer {
   // Hash the text the same way web3 does with the weird "Ethereum Signed Message" text
-  const hashed = EthU.hashPersonalMessage(EthU.toBuffer(signedText))
+  const hashed = EthU.hashPersonalMessage(Buffer.from(signedText))
 
   return recoverEthAddressFromDigest(hashed, rpcSig)
 }
 
 export function personalSign(message: string, privateKey: string) {
   const sig = EthU.ecsign(
-    EthU.hashPersonalMessage(EthU.toBuffer(message)),
+    EthU.hashPersonalMessage(Buffer.from(message)),
     EthU.toBuffer(privateKey)
   )
 

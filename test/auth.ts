@@ -8,7 +8,7 @@ require('dotenv').config({
 import * as assert from 'assert'
 import fetch, {Response} from 'node-fetch'
 import {Client} from 'pg'
-import uuidv4 from 'uuidv4'
+import {v4 as uuidv4} from 'uuid'
 
 import {up, down} from '../migrations'
 import * as db from '../database'
@@ -56,7 +56,7 @@ describe('Auth', async () => {
       }
     )
 
-    assert.equal(badResponse.status, 400)
+    assert.strictEqual(badResponse.status, 400)
   })
 
   it('should not create an entity if initialize is not passed', async () => {
@@ -64,7 +64,7 @@ describe('Auth', async () => {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
     })
-    assert.equal(response.status, 200)
+    assert.strictEqual(response.status, 200)
 
     const result = await client.query(`select count(*) from entities`)
     assert.strictEqual(parseInt(result.rows[0].count, 10), 0)
@@ -90,7 +90,7 @@ describe('Auth', async () => {
     })
 
     it('should have returned returned a token', async () => {
-      assert.equal(response.status, 200)
+      assert.strictEqual(response.status, 200)
     })
 
     it('should return 400 on bad uuid format', async () => {
@@ -104,8 +104,8 @@ describe('Auth', async () => {
         }),
       })
 
-      assert.equal(badResponse.status, 400)
-      assert.equal((await badResponse.json()).error, 'bad accessToken format')
+      assert.strictEqual(badResponse.status, 400)
+      assert.strictEqual((await badResponse.json()).error, 'bad accessToken format')
     })
 
     it('should return 400 on bad signature format', async () => {
@@ -119,8 +119,8 @@ describe('Auth', async () => {
         }),
       })
 
-      assert.equal(badResponse.status, 400)
-      assert.equal((await badResponse.json()).error, 'bad signature format')
+      assert.strictEqual(badResponse.status, 400)
+      assert.strictEqual((await badResponse.json()).error, 'bad signature format')
     })
 
     it('should return 400 on bad did format', async () => {
@@ -134,8 +134,8 @@ describe('Auth', async () => {
         }),
       })
 
-      assert.equal(badResponse.status, 400)
-      assert.equal((await badResponse.json()).error, 'bad did format')
+      assert.strictEqual(badResponse.status, 400)
+      assert.strictEqual((await badResponse.json()).error, 'bad did format')
     })
 
     it('should return 401 on unknown uuid', async () => {
@@ -149,8 +149,8 @@ describe('Auth', async () => {
         }),
       })
 
-      assert.equal(badResponse.status, 401)
-      assert.equal((await badResponse.json()).error, 'unauthorized')
+      assert.strictEqual(badResponse.status, 401)
+      assert.strictEqual((await badResponse.json()).error, 'unauthorized')
     })
 
     // TODO: Discuss test
@@ -164,8 +164,8 @@ describe('Auth', async () => {
         }),
       })
 
-      assert.equal(badResponse.status, 400)
-      assert.equal((await badResponse.json()).error, 'missing did')
+      assert.strictEqual(badResponse.status, 400)
+      assert.strictEqual((await badResponse.json()).error, 'missing did')
     })
 
     it('should return 401 if signature is invalid', async () => {
@@ -183,8 +183,8 @@ describe('Auth', async () => {
           did: adminDid,
         }),
       })
-      assert.equal(badResponse.status, 401)
-      assert.equal((await badResponse.json()).error, 'unauthorized')
+      assert.strictEqual(badResponse.status, 401)
+      assert.strictEqual((await badResponse.json()).error, 'unauthorized')
     })
 
     it('should return 401 if did of key passed does not match token', async () => {
@@ -200,8 +200,8 @@ describe('Auth', async () => {
         }),
       })
 
-      assert.equal(badResponse.status, 401)
-      assert.equal((await badResponse.json()).error, 'unauthorized')
+      assert.strictEqual(badResponse.status, 401)
+      assert.strictEqual((await badResponse.json()).error, 'unauthorized')
     })
 
     it('should not be able to access a protected endpoint before the token is validated', async () => {
@@ -212,7 +212,7 @@ describe('Auth', async () => {
         },
       })
 
-      assert.equal(badResponse.status, 401)
+      assert.strictEqual(badResponse.status, 401)
     })
 
     it('should not create another entity if an different user trys to sign up', async () => {
@@ -221,11 +221,11 @@ describe('Auth', async () => {
         headers: {'Content-Type': 'application/json'},
       })
 
-      assert.equal(newResponse.status, 200)
+      assert.strictEqual(newResponse.status, 200)
 
       const result = await client.query(`select count(*) from entities`)
 
-      assert.equal(result.rows[0].count, 1)
+      assert.strictEqual(result.rows[0].count, '1')
     })
 
     describe('after validating the token', async () => {
@@ -242,7 +242,7 @@ describe('Auth', async () => {
       })
 
       it('should return OK', async () => {
-        assert.equal(response.status, 200)
+        assert.strictEqual(response.status, 200)
       })
 
       it('should return 401 if passing the same key again', async () => {
@@ -256,8 +256,8 @@ describe('Auth', async () => {
           }),
         })
 
-        assert.equal(badResponse.status, 401)
-        assert.equal((await badResponse.json()).error, 'unauthorized')
+        assert.strictEqual(badResponse.status, 401)
+        assert.strictEqual((await badResponse.json()).error, 'unauthorized')
       })
 
       describe('after setting ALLOW_ANONYMOUS set to true and requesting a new token with a different key', async () => {
@@ -308,8 +308,8 @@ describe('Auth', async () => {
         })
 
         it('should return OK', async () => {
-          assert.equal(response.status, 200)
-          assert.equal(resetResponse.status, 200)
+          assert.strictEqual(response.status, 200)
+          assert.strictEqual(resetResponse.status, 200)
         })
 
         it('should not let a non admin add/remove a blacklist', async () => {
@@ -321,7 +321,7 @@ describe('Auth', async () => {
             },
           })
 
-          assert.equal(badResponse.status, 401)
+          assert.strictEqual(badResponse.status, 401)
         })
 
         describe('after adding the user as an admin', async () => {
@@ -355,7 +355,7 @@ describe('Auth', async () => {
             })
 
             it('should return ok', async () => {
-              assert.equal(response.status, 200)
+              assert.strictEqual(response.status, 200)
             })
 
             describe('after the friend creates a new token', async () => {
@@ -373,7 +373,7 @@ describe('Auth', async () => {
               })
 
               it('should return ok', async () => {
-                assert.equal(response.status, 200)
+                assert.strictEqual(response.status, 200)
               })
 
               it('should have created the access token', async () => {
@@ -381,7 +381,7 @@ describe('Auth', async () => {
                   `select count(*) from access_token where did = $1::text;`,
                   [friendDid]
                 )
-                assert.equal(result.rows[0].count, 1)
+                assert.strictEqual(result.rows[0].count, '1')
               })
             })
           })
@@ -398,7 +398,7 @@ describe('Auth', async () => {
             })
 
             it('should return 200', async () => {
-              assert.equal(response.status, 200)
+              assert.strictEqual(response.status, 200)
             })
 
             it('should once again not let be able to create new entities', async () => {
@@ -410,14 +410,14 @@ describe('Auth', async () => {
                   Authorization: `Bearer ${userAccessToken}`,
                 },
               })
-              assert.equal(badResponse.status, 401)
+              assert.strictEqual(badResponse.status, 401)
 
               const result = await client.query(
                 `select count(*) from entities where did = $1::text;`,
                 [did]
               )
 
-              assert.equal(result.rows[0].count, 0)
+              assert.strictEqual(result.rows[0].count, '0')
             })
           })
         })
@@ -434,7 +434,7 @@ describe('Auth', async () => {
           })
 
           it('should have returned returned a token', async () => {
-            assert.equal(response.status, 200)
+            assert.strictEqual(response.status, 200)
           })
 
           describe('after validating the second token', async () => {
@@ -451,7 +451,7 @@ describe('Auth', async () => {
             })
 
             it('should have returned returned a token', async () => {
-              assert.equal(response.status, 200)
+              assert.strictEqual(response.status, 200)
             })
 
             it('should be able to access a protected endpoint', async () => {
@@ -462,7 +462,7 @@ describe('Auth', async () => {
                 },
               })
 
-              assert.equal(goodResponse.status, 200)
+              assert.strictEqual(goodResponse.status, 200)
             })
 
             it('should not be able to access a protected endpoint with a bad token', async () => {
@@ -473,7 +473,7 @@ describe('Auth', async () => {
                 },
               })
 
-              assert.equal(badResponse.status, 401)
+              assert.strictEqual(badResponse.status, 401)
             })
 
             describe('after blacklisting the user did', async () => {
@@ -494,7 +494,7 @@ describe('Auth', async () => {
                     Authorization: `Bearer ${userAccessToken}`,
                   },
                 })
-                assert.equal(badResponse.status, 401)
+                assert.strictEqual(badResponse.status, 401)
               })
 
               describe('after unblacklisting the did', async () => {
@@ -515,7 +515,7 @@ describe('Auth', async () => {
                       Authorization: `Bearer ${userAccessToken}`,
                     },
                   })
-                  assert.equal(goodResponse.status, 200)
+                  assert.strictEqual(goodResponse.status, 200)
                 })
               })
             })
@@ -535,7 +535,7 @@ describe('Auth', async () => {
                     Authorization: `Bearer ${adminAccessToken}`,
                   },
                 })
-                assert.equal(badResponse.status, 401)
+                assert.strictEqual(badResponse.status, 401)
               })
             })
           })
