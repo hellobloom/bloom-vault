@@ -1,4 +1,6 @@
-import * as express from 'express-serve-static-core'
+import * as express from 'express'
+import * as EthU from 'ethereumjs-util'
+
 import {
   apiOnly,
   asyncHandler,
@@ -15,7 +17,6 @@ import {
   toBoolean,
   recoverEthAddressFromPersonalRpcSig,
 } from '../utils'
-import * as EthU from 'ethereumjs-util'
 
 export const tokenRouter = (app: express.Application) => {
   app.post(
@@ -24,7 +25,7 @@ export const tokenRouter = (app: express.Application) => {
     apiOnly,
     asyncHandler(
       async req => {
-        const query = req.query as {did: string; initialize: boolean}
+        const query = req.query as {did: string; initialize: string}
         const validator = new ModelValidator(query, {initialize: true})
 
         return validator.validate({

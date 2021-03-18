@@ -92,6 +92,8 @@ console.log(`Local:  http://localhost:${port}/`)
 
 process.on('unhandledRejection', error => {
   if (error) {
-    persistError(error.message, error.stack)
+    const [message, stack = 'Stack is missing'] = error instanceof Error ? [error.message, error.stack] : [JSON.stringify(error)]
+
+    persistError(message, stack)
   }
 })

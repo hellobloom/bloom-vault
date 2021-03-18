@@ -1,4 +1,6 @@
-import * as express from 'express-serve-static-core'
+import * as express from 'express'
+import * as EthU from 'ethereumjs-util'
+
 import {
   apiOnly,
   authenticatedHandler,
@@ -17,7 +19,6 @@ import {
   isNotEmpty,
   recoverEthAddressFromPersonalRpcSig,
 } from '../utils'
-import * as EthU from 'ethereumjs-util'
 
 export const dataRouter = (app: express.Application) => {
   app.get(
@@ -49,8 +50,8 @@ export const dataRouter = (app: express.Application) => {
   const getData = authenticatedHandler(
     async (req, res, next) => {
       const body = req.params as {
-        start: number
-        end: number | undefined
+        start: string
+        end: string | undefined
       }
       const queryParams = req.query as {
         cypherindex?: string
@@ -151,8 +152,8 @@ export const dataRouter = (app: express.Application) => {
     async (req, res, next) => {
       const validator = new ModelValidator(
         {
-          start: req.params.start as number,
-          end: req.params.end as number | undefined,
+          start: req.params.start as string,
+          end: req.params.end as string | undefined,
           signatures: req.body.signatures as string[] | undefined,
         },
         {end: true, signatures: true}
@@ -162,14 +163,14 @@ export const dataRouter = (app: express.Application) => {
         end: optionalNumber,
         signatures: async (name, value, model) => {
           const expectedLength =
-            udefCoalesce(model.end, model.start) - model.start + 1
+            Number(udefCoalesce(model.end, model.start)) - Number(model.start) + 1
           if (value && value.length !== expectedLength) {
             throw new ClientFacingError(`too many or too few signatures`)
           }
           if (!value) value = []
           const ids = [...Array(expectedLength).keys()]
             .map(Number)
-            .map(i => i + model.start)
+            .map(i => i + Number(model.start))
 
           const {did} = req.entity
 
@@ -217,8 +218,8 @@ export const dataRouter = (app: express.Application) => {
     async (req, res, next) => {
       const validator = new ModelValidator(
         {
-          start: req.params.start as number,
-          end: req.params.end as number | undefined,
+          start: req.params.start as string,
+          end: req.params.end as string | undefined,
         },
         {end: true}
       )

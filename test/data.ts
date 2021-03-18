@@ -8,12 +8,13 @@ require('dotenv').config({
 import * as assert from 'assert'
 import fetch, {Response} from 'node-fetch'
 import {Client} from 'pg'
+import {ByteSource} from 'aes-js'
+import {v4 as uuidv4} from 'uuid'
+
 import {up, down} from '../migrations'
 import * as db from '../database'
 import {dataDeletionMessage, udefCoalesce, personalSign} from '../src/utils'
-import {ByteSource} from 'aes-js'
 import {getRandomKey, encryptAES, decryptAES} from './utls/aes'
-import uuidv4 from 'uuidv4'
 
 const url = 'http://localhost:3001'
 
@@ -229,10 +230,10 @@ describe('Data', () => {
     for (const user of users) {
       const response = await getMe(user.accessToken)
       const body = await response.json()
-      assert.equal(body.did.id, user.did)
-      assert.equal(body.dataCount, 0)
-      assert.equal(body.deletedCount, 0)
-      assert.equal(response.status, 200)
+      assert.strictEqual(body.did.id, user.did)
+      assert.strictEqual(body.dataCount, 0)
+      assert.strictEqual(body.deletedCount, 0)
+      assert.strictEqual(response.status, 200)
     }
   })
 
@@ -249,7 +250,7 @@ describe('Data', () => {
     })
 
     it('should hit a rate limit', () => {
-      assert.equal(response.status, 429)
+      assert.strictEqual(response.status, 429)
     })
   })
 
@@ -292,8 +293,8 @@ describe('Data', () => {
       for (const user of users) {
         const response = await getMe(user.accessToken)
         const body = await response.json()
-        assert.equal(body.dataCount, user.data.length)
-        assert.equal(body.deletedCount, 0)
+        assert.strictEqual(body.dataCount, user.data.length)
+        assert.strictEqual(body.deletedCount, 0)
       }
     })
 
@@ -304,12 +305,12 @@ describe('Data', () => {
         end: firstUser.data.length - 1,
       })
       const body = await response.json()
-      assert.equal(body[0].id, 0)
-      assert.equal(body.length, firstUser.data.length)
+      assert.strictEqual(body[0].id, 0)
+      assert.strictEqual(body.length, firstUser.data.length)
       const decrypted = await decryptAES(body[0].cyphertext, firstUser.aesKey)
       const data = JSON.parse(decrypted) as IData
-      assert.equal(data.id, firstUser.data[0].id)
-      assert.equal(data.text, firstUser.data[0].text)
+      assert.strictEqual(data.id, firstUser.data[0].id)
+      assert.strictEqual(data.text, firstUser.data[0].text)
     })
 
     it('should not return data outside of the index range', async () => {
@@ -319,8 +320,8 @@ describe('Data', () => {
         end: firstUser.data.length - 2,
       })
       const body = await response.json()
-      assert.equal(body[0].id, 0)
-      assert.equal(body.length, firstUser.data.length - 1)
+      assert.strictEqual(body[0].id, 0)
+      assert.strictEqual(body.length, firstUser.data.length - 1)
     })
     it('should not return data outside of the index range', async () => {
       const response = await getData({
@@ -329,7 +330,7 @@ describe('Data', () => {
         end: firstUser.data.length - 2,
       })
       const body = await response.json()
-      assert.equal(response.status, 404)
+      assert.strictEqual(response.status, 404)
       assert.deepStrictEqual(body, {})
     })
 
@@ -359,8 +360,8 @@ describe('Data', () => {
         const body = await response.json()
         const decrypted = decryptAES(body[0].cyphertext, firstUser.aesKey)
         const data = JSON.parse(decrypted) as IData
-        assert.equal(data.id, d.id)
-        assert.equal(data.text, d.text)
+        assert.strictEqual(data.id, d.id)
+        assert.strictEqual(data.text, d.text)
       }
     })
 
@@ -381,18 +382,18 @@ describe('Data', () => {
         d =>
           Array.isArray(d.type) && d.type.findIndex(t => t === sharedMultiIndex) > -1
       )
-      assert.equal(body.length, matchingDataRows.length)
+      assert.strictEqual(body.length, matchingDataRows.length)
 
       for (const d of body) {
         const exists = matchingDataRows.findIndex(md => md.id === d.id) > -1
-        assert.equal(exists, true)
+        assert.strictEqual(exists, true)
       }
     })
 
     it('the indexes returned by /data/me are unique', async () => {
       const me = await (await getMe(firstUser.accessToken)).json()
       const cypherIndexes = me.cypherIndexes as {cypherindex: string}[]
-      assert.equal(
+      assert.strictEqual(
         cypherIndexes.length,
         cypherIndexes.filter((ci, idx) => {
           return (
@@ -414,7 +415,7 @@ describe('Data', () => {
         cypherindex: outsideCypherindex,
       })
       const body = await response.json()
-      assert.equal(response.status, 404)
+      assert.strictEqual(response.status, 404)
       assert.deepStrictEqual(body, {})
     })
 
@@ -430,7 +431,7 @@ describe('Data', () => {
         cypherindex: outsideCypherindex,
       })
       const body = await response.json()
-      assert.equal(response.status, 404)
+      assert.strictEqual(response.status, 404)
       assert.deepStrictEqual(body, {})
     })
 
@@ -441,13 +442,13 @@ describe('Data', () => {
         end: secondUser.data.length - 1,
       })
       const body = (await response.json()) as Array<{id: number; cyphertext: string}>
-      assert.equal(body.length, 2)
+      assert.strictEqual(body.length, 2)
       body.forEach(async (blob, i) => {
         const expectedId = secondUser.data.length - 2 + i
         const decrypted = await decryptAES(blob.cyphertext, secondUser.aesKey)
         const data = JSON.parse(decrypted) as IData
-        assert.equal(expectedId, blob.id)
-        assert.equal(expectedId, data.id)
+        assert.strictEqual(expectedId, blob.id)
+        assert.strictEqual(expectedId, data.id)
       })
     })
 
@@ -456,7 +457,7 @@ describe('Data', () => {
         token: firstUser.accessToken,
         start: firstUser.data.length,
       })
-      assert.equal(response.status, 404)
+      assert.strictEqual(response.status, 404)
     })
 
     it('cannot insert data out of order', async () => {
@@ -468,8 +469,8 @@ describe('Data', () => {
         id: firstUser.data.length + 1,
       })
       const body = await response.json()
-      assert.equal(response.status, 400)
-      assert.equal(body.error, 'id not in sequence')
+      assert.strictEqual(response.status, 400)
+      assert.strictEqual(body.error, 'id not in sequence')
     })
 
     it('should not let too few signatures be passed if passed', async () => {
@@ -477,8 +478,8 @@ describe('Data', () => {
 
       const response = await deleteData(secondUser.accessToken, 0, {signatures})
       const body = await response.json()
-      assert.equal(response.status, 400)
-      assert.equal(body.error, 'too many or too few signatures')
+      assert.strictEqual(response.status, 400)
+      assert.strictEqual(body.error, 'too many or too few signatures')
     })
 
     it('should not let a bad signature be used to delete', async () => {
@@ -489,8 +490,8 @@ describe('Data', () => {
 
       const response = await deleteData(secondUser.accessToken, id, {signatures})
       const body = await response.json()
-      assert.equal(response.status, 400)
-      assert.equal(body.error, `invalid signature for id: ${id}`)
+      assert.strictEqual(response.status, 400)
+      assert.strictEqual(body.error, `invalid signature for id: ${id}`)
     })
 
     context('after deleting some data', () => {
@@ -519,39 +520,39 @@ describe('Data', () => {
       it('should update deleted count for the users', async () => {
         let response = await getMe(secondUser.accessToken)
         let body = await response.json()
-        assert.equal(body.dataCount, secondUser.data.length)
-        assert.equal(body.deletedCount, 2)
+        assert.strictEqual(body.dataCount, secondUser.data.length)
+        assert.strictEqual(body.deletedCount, 2)
 
         response = await getMe(firstUser.accessToken)
         body = await response.json()
-        assert.equal(body.dataCount, firstUser.data.length)
-        assert.equal(body.deletedCount, 1)
+        assert.strictEqual(body.dataCount, firstUser.data.length)
+        assert.strictEqual(body.deletedCount, 1)
       })
 
       it('should return expected deletions', async () => {
         let response = await getDeletions(secondUser.accessToken, 0, 1)
         let body = (await response.json()) as Array<{id: number; signature: string}>
-        assert.equal(body.length, 2)
-        assert.equal(body[0].id, start)
-        assert.equal(body[1].id, end)
+        assert.strictEqual(body.length, 2)
+        assert.strictEqual(body[0].id, start)
+        assert.strictEqual(body[1].id, end)
 
         response = await getDeletions(firstUser.accessToken, 0)
         body = await response.json()
-        assert.equal(body.length, 1)
-        assert.equal(body[0].id, 0)
+        assert.strictEqual(body.length, 1)
+        assert.strictEqual(body[0].id, 0)
       })
 
       it('should return null for the data', async () => {
         let response = await getData({token: secondUser.accessToken, start, end})
         let body = (await response.json()) as Array<{id: number; cyphertext: string}>
-        assert.equal(body.length, 2)
-        assert.equal(body[0].cyphertext, null)
-        assert.equal(body[1].cyphertext, null)
+        assert.strictEqual(body.length, 2)
+        assert.strictEqual(body[0].cyphertext, null)
+        assert.strictEqual(body[1].cyphertext, null)
 
         response = await getData({token: firstUser.accessToken, start: 0})
         body = await response.json()
-        assert.equal(body.length, 1)
-        assert.equal(body[0].cyphertext, null)
+        assert.strictEqual(body.length, 1)
+        assert.strictEqual(body[0].cyphertext, null)
       })
     })
   })

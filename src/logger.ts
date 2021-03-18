@@ -1,5 +1,6 @@
-import {env} from './environment'
 import fetch from 'node-fetch'
+
+import {env} from './environment'
 import {attempt} from './utils'
 
 export async function persistError(message: string, stack: string) {

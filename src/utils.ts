@@ -1,5 +1,5 @@
 import * as EthU from 'ethereumjs-util'
-import * as wallet from 'ethereumjs-wallet'
+import Wallet from 'ethereumjs-wallet'
 
 const sleep = (miliseconds: number) =>
   new Promise(resolve => setTimeout(resolve, miliseconds))
@@ -126,7 +126,7 @@ function recoverEthAddressFromDigest(digest: Buffer, rpcSig: string): Buffer {
   // Recover public key from the hash of the message we constructed and the signature the user provided
   const recoveredPubkey = EthU.ecrecover(digest, sigParts.v, sigParts.r, sigParts.s)
   // Convert the recovered public key into the corresponding ethereum address
-  const recoveredAddress = wallet.fromPublicKey(recoveredPubkey).getAddressString()
+  const recoveredAddress = Wallet.fromPublicKey(recoveredPubkey).getAddressString()
   const zerox = '0x'
   return new Buffer(
     recoveredAddress.startsWith(zerox)
@@ -141,14 +141,14 @@ export function recoverEthAddressFromPersonalRpcSig(
   rpcSig: string
 ): Buffer {
   // Hash the text the same way web3 does with the weird "Ethereum Signed Message" text
-  const hashed = EthU.hashPersonalMessage(EthU.toBuffer(signedText))
+  const hashed = EthU.hashPersonalMessage(Buffer.from(signedText))
 
   return recoverEthAddressFromDigest(hashed, rpcSig)
 }
 
 export function personalSign(message: string, privateKey: string) {
   const sig = EthU.ecsign(
-    EthU.hashPersonalMessage(EthU.toBuffer(message)),
+    EthU.hashPersonalMessage(Buffer.from(message)),
     EthU.toBuffer(privateKey)
   )
 
