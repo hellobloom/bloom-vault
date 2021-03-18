@@ -60,18 +60,14 @@ export const tokenRouter = (app: express.Application) => {
 
         return validator.validate({
           accessToken: async (name, value) => {
-            console.log('accessToken')
             const uuidRegex = regularExpressions.auth.uuid
             if (!uuidRegex.test(value)) {
-              console.log('accessToken - error', {value})
               throw new ClientFacingError(`bad ${name} format`, 400)
             }
-            console.log('accessToken - success', {value})
             return value
           },
           did: didValidator,
           signature: async (name, value) => {
-            console.log('signature')
             try {
               const ethAddress = EthU.bufferToHex(
                 recoverEthAddressFromPersonalRpcSig(body.accessToken, value)
@@ -79,7 +75,6 @@ export const tokenRouter = (app: express.Application) => {
               if (ethAddress !== body.did.replace('did:ethr:', '')) {
                 throw new ClientFacingError('unauthorized', 401)
               }
-              console.log('signature - success', {value})
               return value
             } catch (err) {
               console.log('validate-token signature validation error')
