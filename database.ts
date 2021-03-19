@@ -2,7 +2,10 @@ import {udefCoalesce} from './src/utils'
 import * as fs from 'fs'
 
 const ca = '/var/run/secrets/pg_ca'
-
+const shouldCheckServerIdentity =
+  udefCoalesce(process.env.POSTGRES_CHECKSI, 'false')
+    .trim()
+    .toLowerCase() === 'true'
 export const production = {
   user: udefCoalesce(process.env.POSTGRES_USER, 'postgres'),
   password: process.env.POSTGRES_PASSWORD,
@@ -12,10 +15,7 @@ export const production = {
   ssl: fs.existsSync(ca)
     ? {
         ca: fs.readFileSync(ca),
-        checkServerIdentity: () => {
-          console.log('I am checkServerIdentity!')
-          return undefined
-        },
+        checkServerIdentity: shouldCheckServerIdentity ? undefined : () => undefined,
       }
     : undefined,
 }
