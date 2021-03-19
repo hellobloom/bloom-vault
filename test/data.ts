@@ -382,6 +382,7 @@ describe('Data', () => {
         d =>
           Array.isArray(d.type) && d.type.findIndex(t => t === sharedMultiIndex) > -1
       )
+
       assert.strictEqual(body.length, matchingDataRows.length)
 
       for (const d of body) {
@@ -393,6 +394,7 @@ describe('Data', () => {
     it('the indexes returned by /data/me are unique', async () => {
       const me = await (await getMe(firstUser.accessToken)).json()
       const cypherIndexes = me.cypherIndexes as {cypherindex: string}[]
+
       assert.strictEqual(
         cypherIndexes.length,
         cypherIndexes.filter((ci, idx) => {
