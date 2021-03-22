@@ -1,8 +1,9 @@
+import * as EthU from 'ethereumjs-util'
+import {Pool, PoolClient, ClientBase} from 'pg'
+
 import * as config from '../database'
 import {persistError} from './logger'
-import {Pool, PoolClient, ClientBase} from 'pg'
 import {env} from './environment'
-import * as EthU from 'ethereumjs-util'
 import {udefCoalesce, recoverEthAddressFromPersonalRpcSig} from './utils'
 
 const pool = new Pool(config[env.nodeEnv()])

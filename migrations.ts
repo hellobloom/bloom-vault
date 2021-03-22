@@ -1,6 +1,7 @@
 'use strict'
-import * as config from './database'
 import {Client} from 'pg'
+
+import * as config from './database'
 
 interface IMigration {
   name: string
@@ -179,7 +180,7 @@ process.on('unhandledRejection', reason => {
   throw reason
 })
 
-if (!module.parent) {
+if (require.main === module) {
   up(config[process.env.NODE_ENV!]).catch(e => {
     throw e
   })

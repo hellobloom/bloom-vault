@@ -40,9 +40,7 @@ spec:
     DOCKER_IMAGE   = "${DOCKER_ACCT}/${REPO_NAME}"       // Dockerhub image
     CHARTS_REPO    = 'bloom-charts'                      // Dockerhub image name
     DOCKERHUB_ID   = 'dockerhub-creds'                   // Dockerhub credentials
-    SSH_KEY        = credentials('bloom-vault-ssh-key')  // Bloom Vault ssh key
-    NPMRC          = credentials('bloom-vault-npmrc')    // NPM token
-    DOCKER_ARG     = "-q --build-arg SSH_KEY=${SSH_KEY} --build-arg NPMRC=${NPMRC} -f Dockerfile ."
+    DOCKER_ARG     = "-q -f Dockerfile ."
     SLACK_CHAN     = '#jenkins-dev'
   }
   parameters {
@@ -56,14 +54,6 @@ spec:
             echo "Checking envvars."
             if ${DEBUG}; then
               printenv; ls -AlF ..;
-            fi
-            if test -z ${SSH_KEY}; then
-              echo "ERROR: SSH_KEY must be set"
-              exit 2
-            fi
-            if test -z ${NPMRC}; then
-              echo "ERROR: NPMRC must be set"
-              exit 2
             fi
           """
         }
@@ -81,10 +71,10 @@ spec:
             apt -y update
             apt -y install curl
 
-
-            echo "Installing Node 10"
+            echo "Installing Node 14"
             # https://github.com/nodesource/distributions/blob/master/README.md
-            curl -sL https://deb.nodesource.com/setup_10.x | bash -
+            curl -sL https://deb.nodesource.com/setup_14.x | bash -
+
             apt -y install nodejs
 
             echo "Node / NPM Versions"
