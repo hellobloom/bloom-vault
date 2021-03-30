@@ -1,5 +1,4 @@
 import * as express from 'express'
-import * as EthU from 'ethereumjs-util'
 
 import {
   apiOnly,
@@ -177,10 +176,15 @@ export const dataRouter = (app: express.Application) => {
           return {
             signatures: value.map((s, i) => {
               try {
-                const ethAddress = EthU.bufferToHex(
-                  recoverEthAddressFromPersonalRpcSig(dataDeletionMessage(ids[i]), s)
+                const ethAddress = recoverEthAddressFromPersonalRpcSig(
+                  dataDeletionMessage(ids[i]),
+                  s
                 )
-                if (ethAddress !== did.replace('did:ethr:', '')) {
+                const reqEthAddress = Buffer.from(
+                  did.replace('did:ethr:0x', ''),
+                  'hex'
+                )
+                if (Buffer.compare(ethAddress, reqEthAddress) !== 0) {
                   throw new ClientFacingError(`invalid signature for id: ${ids[i]}`)
                 }
               } catch (err) {
