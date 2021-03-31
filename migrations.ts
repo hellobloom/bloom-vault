@@ -125,6 +125,8 @@ const migrations: IMigration[] = [
         alter column did set data type citext;
       `,
     down: `
+      delete from access_token;
+
       alter table entities
         alter column did set data type text;
       alter table data
