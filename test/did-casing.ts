@@ -129,31 +129,31 @@ describe('DID Casing Tests', () => {
 
   it(`Should have 1 non-admin entity upon requesting a token for each different casing of the same user (standard, upper, and lower), but end in 2 non-admin entities when the different user requests a token.`, async () => {
     await requestToken(user.standard)
+    await validateToken(user.standard)
     let entitiesCountQueryRes = await client.query(
       `select count(did) from entities where admin = 'f'`
     )
-    await validateToken(user.standard)
     assert.strictEqual(parseInt(entitiesCountQueryRes.rows[0].count, 10), 1)
 
     await requestToken(user.uppercased)
+    await validateToken(user.uppercased)
     entitiesCountQueryRes = await client.query(
       `select count(did) from entities where admin = 'f'`
     )
-    await validateToken(user.uppercased)
     assert.strictEqual(parseInt(entitiesCountQueryRes.rows[0].count, 10), 1)
 
     await requestToken(user.lowercased)
+    await validateToken(user.lowercased)
     entitiesCountQueryRes = await client.query(
       `select count(did) from entities where admin = 'f'`
     )
-    await validateToken(user.lowercased)
     assert.strictEqual(parseInt(entitiesCountQueryRes.rows[0].count, 10), 1)
 
     await requestToken(user.different)
+    await validateToken(user.different)
     entitiesCountQueryRes = await client.query(
       `select count(did) from entities where admin = 'f'`
     )
-    await validateToken(user.different)
     assert.strictEqual(parseInt(entitiesCountQueryRes.rows[0].count, 10), 2)
   })
 
