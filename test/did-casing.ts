@@ -5,17 +5,13 @@ require('dotenv').config({
     typeof process.env.TEST_ENV === 'string' ? process.env.TEST_ENV : '../.env.test'
   ),
 })
-console.log('ALLOW_ANONYMOUS=' + process.env.ALLOW_ANONYMOUS)
+
 import * as assert from 'assert'
 import fetch from 'node-fetch'
 import {Client} from 'pg'
-// import {ByteSource} from 'aes-js'
-// import {v4 as uuidv4} from 'uuid'
-
 import {up, down} from '../migrations'
 import * as db from '../database'
-// import {dataDeletionMessage, udefCoalesce, personalSign} from '../src/utils'
-import {getRandomKey /*, encryptAES, decryptAES*/} from './utls/aes'
+import {getRandomKey} from './utls/aes'
 import {personalSign} from '../src/utils'
 
 const url = 'http://localhost:3001'
@@ -51,16 +47,6 @@ async function validateToken(user: TUser) {
   })
   return response.json()
 }
-
-// async function getMe(token: string) {
-//   const response = await fetch(`${url}/data/me`, {
-//     headers: {
-//       'Content-Type': 'application/json',
-//       Authorization: `Bearer ${token}`,
-//     },
-//   })
-//   return response.json()
-// }
 
 describe('DID Casing Tests', () => {
   let client: Client
@@ -127,7 +113,7 @@ describe('DID Casing Tests', () => {
     await client.end()
   })
 
-  it(`Should have 1 non-admin entity upon requesting a token for each different casing of the same user (standard, upper, and lower), but end in 2 non-admin entities when the different user requests a token.`, async () => {
+  it(`Should have 1 non-admin entity upon requesting a token for each different casing of the same user (standard, upper, and lower), but end up with 2 non-admin entities when the different user requests a token.`, async () => {
     await requestToken(user.standard)
     await validateToken(user.standard)
     let entitiesCountQueryRes = await client.query(
@@ -156,6 +142,4 @@ describe('DID Casing Tests', () => {
     )
     assert.strictEqual(parseInt(entitiesCountQueryRes.rows[0].count, 10), 2)
   })
-
-  // TODO: ADD SOME data_encrypted_indexes and think about down migration with casing in mind...
 })
