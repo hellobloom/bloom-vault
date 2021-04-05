@@ -1,5 +1,4 @@
 import * as express from 'express'
-import * as EthU from 'ethereumjs-util'
 
 import {
   apiOnly,
@@ -69,10 +68,16 @@ export const tokenRouter = (app: express.Application) => {
           did: didValidator,
           signature: async (name, value) => {
             try {
-              const ethAddress = EthU.bufferToHex(
-                recoverEthAddressFromPersonalRpcSig(body.accessToken, value)
+              const ethAddress = recoverEthAddressFromPersonalRpcSig(
+                body.accessToken,
+                value
               )
-              if (ethAddress !== body.did.replace('did:ethr:', '')) {
+              const reqEthAddress = Buffer.from(
+                body.did.replace('did:ethr:0x', ''),
+                'hex'
+              )
+
+              if (Buffer.compare(ethAddress, reqEthAddress) !== 0) {
                 throw new ClientFacingError('unauthorized', 401)
               }
               return value
