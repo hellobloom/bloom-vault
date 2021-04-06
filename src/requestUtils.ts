@@ -3,11 +3,7 @@ import {
   NextFunction,
   Request,
   Response,
-} from 'express-serve-static-core'
-import Repo, {IEntity} from './repository'
-import regularExpressions from './regularExpressions'
-import {env} from './environment'
-import {ClientFacingError} from './utils'
+} from 'express'
 import {
   IDidResolver,
   IDidResolveResult,
@@ -16,6 +12,11 @@ import {
   IDidDocumentPublicKey,
 } from '@decentralized-identity/did-common-typescript'
 import * as EthU from 'ethereumjs-util'
+
+import Repo, {IEntity} from './repository'
+import regularExpressions from './regularExpressions'
+import {env} from './environment'
+import {ClientFacingError} from './utils'
 
 export interface IHandlerResult<T extends object = {}> {
   status: number

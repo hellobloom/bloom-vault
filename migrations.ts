@@ -1,6 +1,7 @@
 'use strict'
-import * as config from './database'
 import {Client} from 'pg'
+
+import * as config from './database'
 
 interface IMigration {
   name: string
@@ -100,10 +101,44 @@ const migrations: IMigration[] = [
 
       insert into data_encrypted_indexes (data_id, data_did, cipherindex)
       select id, did, cypherindex
-      from data;
+      from data
+      where cypherindex is not null;
     `,
     down: `
       drop table if exists data_encrypted_indexes;
+    `,
+  },
+  {
+    name: 'did-casing-compatibility',
+    up: `
+      CREATE EXTENSION IF NOT EXISTS citext;
+
+      alter table data_encrypted_indexes
+        alter column data_did set data type citext;
+      alter table access_token
+        alter column did set data type citext;
+      alter table deletions
+        alter column did set data type citext;
+      alter table data
+        alter column did set data type citext;
+      alter table entities
+        alter column did set data type citext;
+      `,
+    down: `
+      delete from access_token;
+
+      alter table entities
+        alter column did set data type text;
+      alter table data
+        alter column did set data type text;
+      alter table deletions
+        alter column did set data type text;
+      alter table access_token
+        alter column did set data type text;
+      alter table data_encrypted_indexes
+        alter column data_did set data type text;
+
+      drop extension if exists citext;
     `,
   },
 ]
@@ -178,7 +213,7 @@ process.on('unhandledRejection', reason => {
   throw reason
 })
 
-if (!module.parent) {
+if (require.main === module) {
   up(config[process.env.NODE_ENV!]).catch(e => {
     throw e
   })

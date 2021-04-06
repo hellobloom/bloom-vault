@@ -1,4 +1,5 @@
-import * as express from 'express-serve-static-core'
+import * as express from 'express'
+
 import {apiOnly, asyncHandler, ipRateLimited, noValidator} from '../requestUtils'
 
 export const misc = (app: express.Application) => {
