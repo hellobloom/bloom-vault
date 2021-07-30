@@ -1,5 +1,5 @@
 import * as express from 'express'
-
+import {env} from '../environment'
 import {
   apiOnly,
   authenticatedHandler,
@@ -37,8 +37,8 @@ export const dataRouter = (app: express.Application) => {
           dataCount: entity.data_count,
           deletedCount: entity.deleted_count,
           cypherIndexes: cypherIndexes
-            .filter(ci => ci && ci.cypherindex)
-            .map(ci => ({
+            .filter((ci) => ci && ci.cypherindex)
+            .map((ci) => ({
               cypherindex: ci.cypherindex.toString(),
             })),
         },
@@ -64,7 +64,7 @@ export const dataRouter = (app: express.Application) => {
         end: optionalNumber,
         cypherindex: (_name, value) => {
           if (value && typeof value === 'string' && isNotEmpty(value)) {
-            return value.split(',').map(v => Buffer.from(v))
+            return value.split(',').map((v) => Buffer.from(v))
           } else {
             return null
           }
@@ -77,7 +77,7 @@ export const dataRouter = (app: express.Application) => {
       return {
         status: 200,
         body: await Promise.all(
-          entities.map(async e => {
+          entities.map(async (e) => {
             let cyphertext: string | null = null
             if (e.cyphertext) {
               cyphertext = e.cyphertext.toString()
@@ -128,15 +128,19 @@ export const dataRouter = (app: express.Application) => {
               return [Buffer.from(value)]
             }
             if (Array.isArray(value) && value.length) {
-              return value.map(v => Buffer.from(v))
+              return value.map((v) => Buffer.from(v))
             }
             return null
           },
         })
       },
       async ({entity: {did}, id, cyphertext, cypherindex}) => {
+        const logLevel = env.logLevel()
         const newId = await Repo.insertData({did, cyphertext, id, cypherindex})
         if (newId === null) throw new ClientFacingError('id not in sequence')
+        if (logLevel == 'debug') {
+          console.log({newId})
+        }
         return {
           status: 200,
           body: {
@@ -169,7 +173,7 @@ export const dataRouter = (app: express.Application) => {
           if (!value) value = []
           const ids = [...Array(expectedLength).keys()]
             .map(Number)
-            .map(i => i + Number(model.start))
+            .map((i) => i + Number(model.start))
 
           const {did} = req.entity
 
@@ -233,7 +237,7 @@ export const dataRouter = (app: express.Application) => {
       const result = await Repo.getDeletions(did, start, end)
       return {
         status: 200,
-        body: result.map(r => {
+        body: result.map((r) => {
           return {
             id: r.data_id,
             signature: r.signature,
