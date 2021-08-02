@@ -378,7 +378,7 @@ describe('Auth', async () => {
 
               it('should have created the access token', async () => {
                 const result = await client.query(
-                  `select count(*) from access_token where did = $1::text;`,
+                  `select count(*) from access_token where did = $1::citext;`,
                   [friendDid]
                 )
                 assert.strictEqual(result.rows[0].count, '1')
@@ -413,7 +413,7 @@ describe('Auth', async () => {
               assert.strictEqual(badResponse.status, 401)
 
               const result = await client.query(
-                `select count(*) from entities where did = $1::text;`,
+                `select count(*) from entities where did = $1::citext;`,
                 [did]
               )
 
