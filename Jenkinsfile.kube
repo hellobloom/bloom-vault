@@ -1,0 +1,141 @@
+def DEBUG = params.getOrDefault("DEBUG", false)
+
+pipeline {
+  agent {
+    kubernetes {
+      label 'bloom-vault-agent-00009'
+      defaultContainer 'jnlp'
+      yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+labels:
+  component: ci
+spec:
+  serviceAccountName: jenkins
+  containers:
+  - name: ubuntu
+    image: ubuntu:20.04
+    command:
+    - cat
+    tty: true
+  - name: docker
+    image: docker:latest
+    command:
+    - cat
+    tty: true
+    volumeMounts:
+    - mountPath: /var/run/docker.sock
+      name: docker-sock
+  volumes:
+    - name: docker-sock
+      hostPath:
+        path: /var/run/docker.sock
+"""
+    }
+  }
+  environment {
+    DOCKER_ACCT    = "hellobloom"                       // Dockerhub  account
+    REPO_NAME      = 'bloom-vault'                       // Dockerhub image name
+    DOCKER_IMAGE   = "${DOCKER_ACCT}/${REPO_NAME}"       // Dockerhub image
+    CHARTS_REPO    = 'bloom-charts'                      // Dockerhub image name
+    DOCKERHUB_ID   = 'dockerhub-creds'                   // Dockerhub credentials
+    DOCKER_ARG     = "-q -f Dockerfile ."
+    SLACK_CHAN     = '#jenkins-dev'
+  }
+  parameters {
+    booleanParam(name: 'DEBUG', defaultValue: false, description: 'Debuggin mode')
+  }
+  stages {
+    stage('Pre') {
+      steps {
+        container('docker') {
+          sh """
+            echo "Checking envvars."
+            if ${DEBUG}; then
+              printenv; ls -AlF ..;
+            fi
+          """
+        }
+      }
+    }
+    stage('CI Tests') {
+      when { not { anyOf { branch 'master'; branch 'stage'; } } }
+      steps {
+        container('ubuntu') {
+          sh """
+            echo "Setting DEBIAN_FRONTEND to noninteractive for zero interaction while installing or upgrading the system via apt"
+            export DEBIAN_FRONTEND="noninteractive"
+
+            echo "Installing base dependencies"
+            apt -y update
+            apt -y install curl
+
+            echo "Installing Node 14"
+            # https://github.com/nodesource/distributions/blob/master/README.md
+            curl -sL https://deb.nodesource.com/setup_14.x | bash -
+
+            apt -y install nodejs
+
+            echo "Node / NPM Versions"
+            node -v
+            npm -v
+
+            echo "Installing postgres"
+            apt -y install postgresql postgresql-contrib
+            psql --version
+            pg_ctlcluster 12 main start
+
+            echo "Running ./bin/ci-test.sh"
+            ./bin/ci-test.sh
+          """
+        }
+      }
+    }
+    stage('Docker Image Build and Push') {
+      when { anyOf { branch 'master'; branch 'main'; branch 'stage'; branch 'dev' } }
+      steps {
+        container('docker') {
+          script {
+            docker.withRegistry('', DOCKERHUB_ID) {
+              def dockerImage = docker.build(
+                "${DOCKER_IMAGE}:${GIT_COMMIT}",
+                "${DOCKER_ARG}"
+              )
+              dockerImage.push()
+              dockerImage.push('latest')
+            }
+          }
+        }
+      }
+    }
+    stage('Chart Update and Package') {
+      when { anyOf { branch 'master'; branch 'main'; branch 'stage'; branch 'dev' } }
+      steps {
+        build(
+            job: "../${CHARTS_REPO}/${GIT_BRANCH}",
+            parameters: [[$class: 'StringParameterValue', name: 'BLOOM_REPO', value: "${REPO_NAME}"],
+                         [$class: 'StringParameterValue', name: 'COMMIT_HASH', value: "${GIT_COMMIT}"],
+                         [$class: 'BooleanParameterValue', name: 'DEBUG', value: "${params.DEBUG}"]]
+          )
+      }
+    }
+  }
+  post {
+    success {
+      slackSend channel: "${SLACK_CHAN}",
+                color: 'good',
+                message: "Pipeline ${currentBuild.fullDisplayName} success. ${DOCKER_IMAGE}:${GIT_COMMIT}"
+    }
+    unstable {
+      slackSend channel: "${SLACK_CHAN}",
+                color: 'warning',
+                message: "Pipeline ${currentBuild.fullDisplayName} unstable. ${DOCKER_IMAGE}:${GIT_COMMIT}"
+    }
+    unsuccessful {
+      slackSend channel: "${SLACK_CHAN}",
+                color: 'danger',
+                message: "Pipeline ${currentBuild.fullDisplayName} unsuccessful. ${DOCKER_IMAGE}:${GIT_COMMIT}"
+    }
+  }
+}

@@ -9,8 +9,8 @@ describe(`The ${healthEndpoint}`, () => {
     const response = await fetch(`${baseUrl}/api/v1/health`, {
       method: 'GET',
     })
-    assert.equal(response.status, 200)
+    assert.strictEqual(response.status, 200)
     const body = await response.json()
-    assert.equal(body.success, true)
+    assert.strictEqual(body.success, true)
   })
 })

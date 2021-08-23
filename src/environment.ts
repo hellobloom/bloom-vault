@@ -47,6 +47,7 @@ export const env = {
   logUrl: () => environmentVariable('LOG_URL', true),
   logUser: () => environmentVariable('LOG_USER', true),
   logPassword: () => environmentVariable('LOG_PASSWORD', true),
+  logLevel: () => environmentVariable('LOG_LEVEL', true),
   disableRateLimiting: () =>
     toBoolean(environmentVariable('DISABLE_RATE_LIMITING', true)),
   allowAnonymous: () => toBoolean(environmentVariable('ALLOW_ANONYMOUS')),
