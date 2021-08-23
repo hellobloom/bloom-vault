@@ -1,4 +1,4 @@
-FROM node:10
+FROM node:14
 
 EXPOSE 3001
 RUN mkdir /app
@@ -8,7 +8,6 @@ COPY package*.json ./
 RUN npm ci
 
 COPY database.ts tsconfig.json index.ts migrations.ts ./
-COPY typings typings
 COPY src src
 RUN npm run build
 

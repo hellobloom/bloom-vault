@@ -1,4 +1,5 @@
-import * as express from 'express-serve-static-core'
+import * as express from 'express'
+import {env} from '../environment'
 import {
   apiOnly,
   authenticatedHandler,
@@ -17,7 +18,6 @@ import {
   isNotEmpty,
   recoverEthAddressFromPersonalRpcSig,
 } from '../utils'
-import * as EthU from 'ethereumjs-util'
 
 export const dataRouter = (app: express.Application) => {
   app.get(
@@ -37,8 +37,8 @@ export const dataRouter = (app: express.Application) => {
           dataCount: entity.data_count,
           deletedCount: entity.deleted_count,
           cypherIndexes: cypherIndexes
-            .filter(ci => ci && ci.cypherindex)
-            .map(ci => ({
+            .filter((ci) => ci && ci.cypherindex)
+            .map((ci) => ({
               cypherindex: ci.cypherindex.toString(),
             })),
         },
@@ -49,8 +49,8 @@ export const dataRouter = (app: express.Application) => {
   const getData = authenticatedHandler(
     async (req, res, next) => {
       const body = req.params as {
-        start: number
-        end: number | undefined
+        start: string
+        end: string | undefined
       }
       const queryParams = req.query as {
         cypherindex?: string
@@ -64,7 +64,7 @@ export const dataRouter = (app: express.Application) => {
         end: optionalNumber,
         cypherindex: (_name, value) => {
           if (value && typeof value === 'string' && isNotEmpty(value)) {
-            return Buffer.from(value)
+            return value.split(',').map((v) => Buffer.from(v))
           } else {
             return null
           }
@@ -77,7 +77,7 @@ export const dataRouter = (app: express.Application) => {
       return {
         status: 200,
         body: await Promise.all(
-          entities.map(async e => {
+          entities.map(async (e) => {
             let cyphertext: string | null = null
             if (e.cyphertext) {
               cyphertext = e.cyphertext.toString()
@@ -105,7 +105,7 @@ export const dataRouter = (app: express.Application) => {
         const body = req.body as {
           id: number | undefined
           cyphertext: string
-          cypherindex: string
+          cypherindex: string | string[]
         }
         const validator = new ModelValidator(body, {id: true, cypherindex: true})
         return validator.validate({
@@ -121,17 +121,26 @@ export const dataRouter = (app: express.Application) => {
             }
           },
           cypherindex: (_name, value) => {
-            if (value && typeof value === 'string' && isNotEmpty(value)) {
-              return Buffer.from(value)
-            } else {
+            if (!value) {
               return null
             }
+            if (typeof value === 'string' && isNotEmpty(value)) {
+              return [Buffer.from(value)]
+            }
+            if (Array.isArray(value) && value.length) {
+              return value.map((v) => Buffer.from(v))
+            }
+            return null
           },
         })
       },
       async ({entity: {did}, id, cyphertext, cypherindex}) => {
+        const logLevel = env.logLevel()
         const newId = await Repo.insertData({did, cyphertext, id, cypherindex})
         if (newId === null) throw new ClientFacingError('id not in sequence')
+        if (logLevel == 'debug') {
+          console.log({newId})
+        }
         return {
           status: 200,
           body: {
@@ -146,8 +155,8 @@ export const dataRouter = (app: express.Application) => {
     async (req, res, next) => {
       const validator = new ModelValidator(
         {
-          start: req.params.start as number,
-          end: req.params.end as number | undefined,
+          start: req.params.start as string,
+          end: req.params.end as string | undefined,
           signatures: req.body.signatures as string[] | undefined,
         },
         {end: true, signatures: true}
@@ -157,24 +166,29 @@ export const dataRouter = (app: express.Application) => {
         end: optionalNumber,
         signatures: async (name, value, model) => {
           const expectedLength =
-            udefCoalesce(model.end, model.start) - model.start + 1
+            Number(udefCoalesce(model.end, model.start)) - Number(model.start) + 1
           if (value && value.length !== expectedLength) {
             throw new ClientFacingError(`too many or too few signatures`)
           }
           if (!value) value = []
           const ids = [...Array(expectedLength).keys()]
             .map(Number)
-            .map(i => i + model.start)
+            .map((i) => i + Number(model.start))
 
           const {did} = req.entity
 
           return {
             signatures: value.map((s, i) => {
               try {
-                const ethAddress = EthU.bufferToHex(
-                  recoverEthAddressFromPersonalRpcSig(dataDeletionMessage(ids[i]), s)
+                const ethAddress = recoverEthAddressFromPersonalRpcSig(
+                  dataDeletionMessage(ids[i]),
+                  s
                 )
-                if (ethAddress !== did.replace('did:ethr:', '')) {
+                const reqEthAddress = Buffer.from(
+                  did.replace('did:ethr:0x', ''),
+                  'hex'
+                )
+                if (Buffer.compare(ethAddress, reqEthAddress) !== 0) {
                   throw new ClientFacingError(`invalid signature for id: ${ids[i]}`)
                 }
               } catch (err) {
@@ -212,8 +226,8 @@ export const dataRouter = (app: express.Application) => {
     async (req, res, next) => {
       const validator = new ModelValidator(
         {
-          start: req.params.start as number,
-          end: req.params.end as number | undefined,
+          start: req.params.start as string,
+          end: req.params.end as string | undefined,
         },
         {end: true}
       )
@@ -223,7 +237,7 @@ export const dataRouter = (app: express.Application) => {
       const result = await Repo.getDeletions(did, start, end)
       return {
         status: 200,
-        body: result.map(r => {
+        body: result.map((r) => {
           return {
             id: r.data_id,
             signature: r.signature,
