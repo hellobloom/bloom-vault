@@ -17,7 +17,6 @@
     "emitDecoratorMetadata": true,
     "keyofStringsOnly": true,
     "skipLibCheck": true,
-    "typeRoots": ["./node_modules/@types", "./typings"]
   },
   "exclude": ["node_modules", "build"]
 }
