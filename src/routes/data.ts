@@ -1,5 +1,7 @@
 import * as express from 'express'
 import {env} from '../environment'
+
+
 import {
   apiOnly,
   authenticatedHandler,
@@ -173,7 +175,7 @@ export const dataRouter = (app: express.Application) => {
           if (!value) value = []
           const ids = [...Array(expectedLength).keys()]
             .map(Number)
-            .map((i) => i + Number(model.start))
+            .map(i => i + Number(model.start))
 
           const {did} = req.entity
 
