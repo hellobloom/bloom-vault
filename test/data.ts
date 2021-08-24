@@ -240,7 +240,7 @@ describe('Data', () => {
   describe('after spamming an endpoint', async () => {
     let response: Response
     before(async () => {
-      for (let i = 0; i < 65; i++) {
+      for (let i = 0; i < 190; i++) {
         response = await getMe(firstUser.accessToken)
       }
     })
@@ -336,8 +336,8 @@ describe('Data', () => {
 
     it('can retrieve data by index and verify it', async () => {
       const indexedData = firstUser.data
-        .filter(d => typeof d.type !== 'undefined')
-        .sort(d => d.id)
+        .filter((d) => typeof d.type !== 'undefined')
+        .sort((d) => d.id)
 
       for (const d of indexedData) {
         const dataTypes = Array.isArray(d.type) ? d.type : ([d.type] as string[])
@@ -508,7 +508,7 @@ describe('Data', () => {
         start = secondUser.data.length - 2
         end = secondUser.data.length - 1
         const signatures = await Promise.all(
-          [start, end].map(async id => {
+          [start, end].map(async (id) => {
             return personalSign(dataDeletionMessage(id), secondUser.privateKey)
           })
         )

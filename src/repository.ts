@@ -59,7 +59,7 @@ export default class Repo {
         from deletions
         where 1=1
           and id >= $2 and ($3::integer is null or id <= $3::integer)
-          and did = $1::text
+          and did = $1::citext
         order by id;
       `,
       [did, start, udefCoalesce(end, null)]
@@ -95,7 +95,7 @@ export default class Repo {
   public static async deleteData(did: string, ids: number[], signatures: string[]) {
     return this.transaction(async client => {
       const newDeletions = await client.query(
-        `update data set cyphertext = null where did = $1::text and cyphertext is not null and id in ${this.in(
+        `update data set cyphertext = null where did = $1::citext and cyphertext is not null and id in ${this.in(
           ids.length,
           2
         )} returning id;`,
@@ -105,7 +105,7 @@ export default class Repo {
       const newCount = await client.query(
         `
           update entities set deleted_count = deleted_count + $2
-          where did = $1::text
+          where did = $1::citext
           returning deleted_count, data_count;`,
         [did, newDeletions.rowCount]
       )
@@ -114,7 +114,7 @@ export default class Repo {
         const query = `
           insert into deletions
           (did,           id,        data_id,   signature) values ${this.values(
-            ['text', 'integer', 'integer', 'text'],
+            ['citext', 'integer', 'integer', 'text'],
             newDeletions.rowCount
           )};`
 
@@ -152,7 +152,7 @@ export default class Repo {
       const result = await client.query(
         `
           update entities set data_count = data_count + 1
-          where did = $1::text and ($2::integer is null or data_count = $2::integer)
+          where did = $1::citext and ($2::integer is null or data_count = $2::integer)
           returning data_count - 1 as id;
         `,
         [did, udefCoalesce(id, null)]
@@ -183,7 +183,7 @@ export default class Repo {
           .map(ci => [newId, did, ci])
           .reduce((a, b) => a.concat(b), [])
         const valuesStr = this.values(
-          ['integer', 'text', 'bytea'],
+          ['integer', 'citext', 'bytea'],
           cypherindex.length
         )
 
@@ -228,7 +228,7 @@ export default class Repo {
             and dei.data_did = d.did
         where 1=1
           and d.id >= $2 and d.id <= coalesce($3::integer, $2)
-          and d.did = $1::text
+          and d.did = $1::citext
           and (coalesce($4, null) is null OR dei.cipherindex in (${cipherIndexParamArgs}))
         order by d.id;
       `,
@@ -252,7 +252,7 @@ export default class Repo {
         select cipherindex as cypherindex
         from data_encrypted_indexes
         where 1=1
-          and data_did = $1::text
+          and data_did = $1::citext
         order by data_id;
         `,
         [did]
@@ -270,7 +270,7 @@ export default class Repo {
 
   public static async getMe(did: string) {
     const result = await pool.query(
-      `select did, data_count, deleted_count from entities where did = $1::text;`,
+      `select did, data_count, deleted_count from entities where did = $1::citext;`,
       [did]
     )
     if (result.rowCount === 0) {
@@ -304,7 +304,7 @@ export default class Repo {
         await client.query(
           `
           insert into entities
-          (did, admin) select $1::text, true
+          (did, admin) select $1::citext, true
           where (select count(*) from entities) = 0
         `,
           [did]
@@ -314,7 +314,7 @@ export default class Repo {
       const created = await client.query(
         `
         insert into entities
-        (did) values ($1::text)
+        (did) values ($1::citext)
         on conflict(did) do nothing
         returning gen_random_uuid() as uuid;
       `,
@@ -415,7 +415,7 @@ export default class Repo {
     return pool.query(
       `
       insert into entities
-      (did, blacklisted) values ($1::text, true)
+      (did, blacklisted) values ($1::citext, true)
       on conflict(did) do update set blacklisted = true;
     `,
       [did]
@@ -427,7 +427,7 @@ export default class Repo {
       `
       update entities
       set blacklisted = false
-      where did = $1::text;
+      where did = $1::citext;
     `,
       [did]
     )
@@ -437,7 +437,7 @@ export default class Repo {
     return pool.query(
       `
       insert into entities
-      (did, admin) values ($1::text, true)
+      (did, admin) values ($1::citext, true)
       on conflict(did) do update set admin = true;
     `,
       [did]
@@ -449,7 +449,7 @@ export default class Repo {
       `
       update entities
       set admin = false
-      where did = $1::text;
+      where did = $1::citext;
     `,
       [did]
     )
@@ -459,7 +459,7 @@ export default class Repo {
     return pool.query(
       `
       insert into entities
-      (did) values ($1::text)
+      (did) values ($1::citext)
       on conflict(did) do nothing;
     `,
       [did]
@@ -472,7 +472,7 @@ export default class Repo {
         c.query(
           `
         select 1 from entities
-        where did = $1::text and admin = true;
+        where did = $1::citext and admin = true;
       `,
           [did]
         ),
