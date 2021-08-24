@@ -1,5 +1,6 @@
 import * as express from 'express'
 import {env} from '../environment'
+
 import {
   apiOnly,
   authenticatedHandler,
@@ -22,7 +23,7 @@ import {
 export const dataRouter = (app: express.Application) => {
   app.get(
     '/data/me',
-    ipRateLimited(60, 'me'),
+    ipRateLimited(180, 'me'),
     apiOnly,
     noValidatorAuthenticatedHandler(async ({entity: {did}}) => {
       const [entity, cypherIndexes] = await Promise.all([
@@ -92,13 +93,13 @@ export const dataRouter = (app: express.Application) => {
     }
   )
 
-  app.get('/data/:start', ipRateLimited(60, 'get-data'), apiOnly, getData)
+  app.get('/data/:start', ipRateLimited(180, 'get-data'), apiOnly, getData)
 
-  app.get('/data/:start/:end', ipRateLimited(60, 'get-data'), apiOnly, getData)
+  app.get('/data/:start/:end', ipRateLimited(180, 'get-data'), apiOnly, getData)
 
   app.post(
     '/data',
-    ipRateLimited(60, 'post-data'),
+    ipRateLimited(180, 'post-data'),
     apiOnly,
     authenticatedHandler(
       async (req, res, next) => {
@@ -216,7 +217,7 @@ export const dataRouter = (app: express.Application) => {
 
   app.delete(
     '/data/:start/:end',
-    ipRateLimited(60, 'delete-data'),
+    ipRateLimited(180, 'delete-data'),
     apiOnly,
     deleteData
   )
@@ -249,7 +250,7 @@ export const dataRouter = (app: express.Application) => {
 
   app.get(
     '/deletions/:start/:end',
-    ipRateLimited(60, 'deletions'),
+    ipRateLimited(180, 'deletions'),
     apiOnly,
     getDeletions
   )
