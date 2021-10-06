@@ -83,9 +83,11 @@ export const dataRouter = (app: express.Application) => {
             if (e.cyphertext) {
               cyphertext = e.cyphertext.toString()
             }
+            const cypherindex = e.cipherindex.map((i) => i.toString())
             return {
               id: e.id,
               cyphertext,
+              cypherindex,
             }
           })
         ),
