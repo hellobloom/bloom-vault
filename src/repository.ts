@@ -222,7 +222,7 @@ export default class Repo {
       const cipherIndexParams = (cipherindexes ? cipherindexes : null) as any[]
       const result = await pool.query<{id: number, cyphertext: Buffer | null, cipherindex: Buffer}>(
         `
-        select distinct d.id, d.cyphertext
+        select distinct d.id, d.cyphertext, dei.cipherindex
         from data d
           left join data_encrypted_indexes dei on dei.data_id = d.id
             and dei.data_did = d.did
