@@ -210,7 +210,7 @@ export default class Repo {
     start: number
     end?: number
     cypherindex?: Buffer[] | null
-  }): Promise<{id: number, cyphertext: Buffer | null, cipherindex: Buffer[]}[]> {
+  }): Promise<{id: number, cyphertext: Buffer | null, cipherindex: (Buffer | null)[]}[]> {
     const cipherindexes: Buffer[] | null = !cypherindex ? null : cypherindex
     try {
       const cipherindexParamNum = 4
@@ -220,7 +220,7 @@ export default class Repo {
           })
         : '$4::bytea'
       const cipherIndexParams = (cipherindexes ? cipherindexes : null) as any[]
-      const result = await pool.query<{id: number, cyphertext: Buffer | null, cipherindex: Buffer}>(
+      const result = await pool.query<{id: number, cyphertext: Buffer | null, cipherindex: Buffer | null}>(
         `
         select distinct d.id, d.cyphertext, dei.cipherindex
         from data d
@@ -235,7 +235,7 @@ export default class Repo {
         [did, start, udefCoalesce(end, null)].concat(cipherIndexParams)
       )
 
-      const mapped: {[key: string]: {id: number, cyphertext: Buffer | null, cipherindex: Buffer[]}} = {}
+      const mapped: {[key: string]: {id: number, cyphertext: Buffer | null, cipherindex: (Buffer | null)[]}} = {}
 
       result.rows.forEach(row => {
         if (typeof mapped[row.id] === 'undefined') {
