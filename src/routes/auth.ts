@@ -23,7 +23,7 @@ export const tokenRouter = (app: express.Application) => {
     ipRateLimited(20, 'request-token'),
     apiOnly,
     asyncHandler(
-      async req => {
+      async (req) => {
         const query = req.query as {did: string; initialize: string}
         const validator = new ModelValidator(query, {initialize: true})
 
@@ -49,7 +49,7 @@ export const tokenRouter = (app: express.Application) => {
     ipRateLimited(20, 'validate-token'),
     apiOnly,
     asyncHandler(
-      async req => {
+      async (req) => {
         const body = req.body as {
           accessToken: string
           signature: string
@@ -78,6 +78,11 @@ export const tokenRouter = (app: express.Application) => {
               )
 
               if (Buffer.compare(ethAddress, reqEthAddress) !== 0) {
+                console.log(
+                  'Unauthorized: ethAddress comparison failed',
+                  ethAddress,
+                  reqEthAddress
+                )
                 throw new ClientFacingError('unauthorized', 401)
               }
               return value
@@ -96,6 +101,7 @@ export const tokenRouter = (app: express.Application) => {
         const expiresAt = await Repo.validateAccessToken(accessToken, signature)
 
         if (!expiresAt) {
+          console.log('Unauthorized: Repo.validateAccessToken failed')
           throw new ClientFacingError('unauthorized', 401)
         }
         return {
@@ -106,7 +112,7 @@ export const tokenRouter = (app: express.Application) => {
     )
   )
 
-  const parseDID = createRequestValidator(async req => {
+  const parseDID = createRequestValidator(async (req) => {
     const query = req.query as {did: string}
     const validator = new ModelValidator(query)
 
