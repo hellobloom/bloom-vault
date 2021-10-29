@@ -141,6 +141,16 @@ const migrations: IMigration[] = [
       drop extension if exists citext;
     `,
   },
+  {
+    name: 'add-data_id_and_did-index-on-data_encrypted_indexes',
+    up: `
+    create index data_encrypted_indexes_did_and_id on data_encrypted_indexes using btree(data_id, data_did);
+    create index data_did on data(did);
+    create index data_did_and_id on data using btree(id, did);
+      `,
+    down: `
+    `,
+  },
 ]
 
 export async function up(conf: any, logs: boolean = true) {
@@ -209,12 +219,12 @@ export async function down(conf: any, logs: boolean = true) {
   await client.end()
 }
 
-process.on('unhandledRejection', reason => {
+process.on('unhandledRejection', (reason) => {
   throw reason
 })
 
 if (require.main === module) {
-  up(config[process.env.NODE_ENV!]).catch(e => {
+  up(config[process.env.NODE_ENV!]).catch((e) => {
     throw e
   })
 }
