@@ -77,20 +77,18 @@ export const dataRouter = (app: express.Application) => {
       if (entities.length === 0) return {status: 404, body: {}}
       return {
         status: 200,
-        body: await Promise.all(
-          entities.map(async (e) => {
-            let cyphertext: string | null = null
-            if (e.cyphertext) {
-              cyphertext = e.cyphertext.toString()
-            }
-            const cypherindex = e.cipherindex.filter((i): i is Buffer => i !== null).map((i) => i.toString())
-            return {
-              id: e.id,
-              cyphertext,
-              cypherindex,
-            }
-          })
-        ),
+        body: entities.map((e) => {
+          let cyphertext: string | null = null
+          if (e.cyphertext) {
+            cyphertext = e.cyphertext.toString()
+          }
+          const cypherindex = e.cipherindex.filter((i): i is Buffer => i !== null).map((i) => i.toString())
+          return {
+            id: e.id,
+            cyphertext,
+            cypherindex,
+          }
+        }),
       }
     }
   )
