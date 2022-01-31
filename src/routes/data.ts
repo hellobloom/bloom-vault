@@ -111,6 +111,7 @@ export const dataRouter = (app: express.Application) => {
           const cypherindex = e.cipherindex.filter((i): i is Buffer => i !== null).map((i) => i.toString())
           return {
             id: e.id,
+            deleted: e.cyphertext === null ? true : false,
             cypherindex,
           }
         }),
