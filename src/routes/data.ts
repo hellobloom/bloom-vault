@@ -7,6 +7,7 @@ import {
   ipRateLimited,
   noValidatorAuthenticatedHandler,
   EthereumDIDResolver,
+  AuthenticatedRequestValidator,
 } from '../requestUtils'
 import Repo from '../repository'
 import {
@@ -47,31 +48,33 @@ export const dataRouter = (app: express.Application) => {
     })
   )
 
+  const getDataValidator: AuthenticatedRequestValidator<{start: number, end?: number, cypherindex?: Buffer[] | null}> = async (req, res, next) => {
+    const body = req.params as {
+      start: string
+      end: string | undefined
+    }
+    const queryParams = req.query as {
+      cypherindex?: string
+    }
+    const validator = new ModelValidator(
+      {...body, ...queryParams},
+      {end: true, cypherindex: true}
+    )
+    return validator.validate({
+      start: requiredNumber,
+      end: optionalNumber,
+      cypherindex: (_name, value) => {
+        if (value && typeof value === 'string' && isNotEmpty(value)) {
+          return value.split(',').map((v) => Buffer.from(v))
+        } else {
+          return null
+        }
+      },
+    })
+  }
+
   const getData = authenticatedHandler(
-    async (req, res, next) => {
-      const body = req.params as {
-        start: string
-        end: string | undefined
-      }
-      const queryParams = req.query as {
-        cypherindex?: string
-      }
-      const validator = new ModelValidator(
-        {...body, ...queryParams},
-        {end: true, cypherindex: true}
-      )
-      return validator.validate({
-        start: requiredNumber,
-        end: optionalNumber,
-        cypherindex: (_name, value) => {
-          if (value && typeof value === 'string' && isNotEmpty(value)) {
-            return value.split(',').map((v) => Buffer.from(v))
-          } else {
-            return null
-          }
-        },
-      })
-    },
+    getDataValidator,
     async ({entity: {did}, start, end, cypherindex}) => {
       const entities = await Repo.getData({did, start, end, cypherindex})
       if (entities.length === 0) return {status: 404, body: {}}
@@ -96,6 +99,29 @@ export const dataRouter = (app: express.Application) => {
   app.get('/data/:start', ipRateLimited(180, 'get-data'), apiOnly, getData)
 
   app.get('/data/:start/:end', ipRateLimited(180, 'get-data'), apiOnly, getData)
+
+  const getDataMeta = authenticatedHandler(
+    getDataValidator,
+    async ({entity: {did}, start, end, cypherindex}) => {
+      const entities = await Repo.getData({did, start, end, cypherindex})
+      if (entities.length === 0) return {status: 404, body: {}}
+      return {
+        status: 200,
+        body: entities.map((e) => {
+          const cypherindex = e.cipherindex.filter((i): i is Buffer => i !== null).map((i) => i.toString())
+          return {
+            id: e.id,
+            deleted: e.cyphertext === null ? true : false,
+            cypherindex,
+          }
+        }),
+      }
+    }
+  )
+
+  app.get('/data/meta/:start', ipRateLimited(180, 'get-data-meta'), apiOnly, getDataMeta)
+
+  app.get('/data/meta/:start/:end', ipRateLimited(180, 'get-data-meta'), apiOnly, getDataMeta)
 
   app.post(
     '/data',
