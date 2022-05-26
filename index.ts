@@ -23,7 +23,7 @@ app.use(morgan('tiny'))
 const server = http.createServer(app)
 const port = 3001
 server.listen(port)
-app.use(bodyParser.json({limit: '10mb'}))
+app.use(bodyParser.json({limit: '20mb'}))
 
 if (env.trustProxy() === true) {
   app.enable('trust proxy')
